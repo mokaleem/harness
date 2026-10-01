@@ -1,11 +1,16 @@
 # DeerFlow
 
 DeerFlow is an agent harness with a FastAPI Gateway, a Next.js chat interface,
-skills, MCP tools, subagents, memory, and sandboxed execution. This repository
+skills, MCP tools, subagents, memory, and sandbox providers. This repository
 contains the DeerFlow 2.x application and its Python harness package.
 
+Local development runs directly on **Windows through PowerShell** or on
+**macOS through Terminal**. Docker, Podman, WSL, and GNU Make are not required.
+The Gateway, frontend, and nginx run as native processes on your workstation.
+
 - [Local setup on Windows](#local-setup-on-windows)
-- [Local development in WSL2](#local-development-in-wsl2)
+- [Local setup on macOS](#local-setup-on-macos)
+- [Configure your model and sandbox](#configure-your-model-and-sandbox)
 - [Development commands](#development-commands)
 - [Troubleshooting](#troubleshooting)
 - [Architecture and capabilities](#architecture-and-capabilities)
@@ -13,45 +18,47 @@ contains the DeerFlow 2.x application and its Python harness package.
 
 ## Local setup on Windows
 
-Use **PowerShell and Docker Desktop** for the team's default local environment.
-The app runs on your machine in Linux containers with backend and frontend hot
-reload. Node.js, Python, nginx, and Redis run inside the containers; you do not
-need to install them or GNU Make on Windows for this path.
-
 ### 1. Install prerequisites and open the repository
 
-Install [Git for Windows](https://git-scm.com/install/windows), including Git
-Bash, and the company's approved [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/).
-Enable Docker's WSL2 backend and use **Linux containers**. Start Docker Desktop
-before continuing. The dev stack requires Docker Compose **2.24 or newer**.
+Install through your company's approved software distribution:
 
-Allow roughly 25 GB of free disk space for images and dependencies. A practical
-starting point is 4 CPU cores and 8 GB RAM; 8 cores and 16 GB RAM provide more
-headroom for builds and concurrent agent work. Hosted model APIs do not require
-a local GPU.
+- [Git for Windows](https://git-scm.com/install/windows).
+- [Node.js](https://nodejs.org/en/download), version **22 or newer**.
+- [Python](https://www.python.org/downloads/windows/), version **3.12**.
+- [uv](https://docs.astral.sh/uv/getting-started/installation/), the Python
+  dependency manager. A standalone Windows executable is available if
+  installation scripts are restricted.
+- [Native nginx for Windows](https://nginx.org/en/docs/windows.html). Extract
+  the approved Windows ZIP and add its directory containing `nginx.exe` to
+  your user PATH. Use the actual version directory, such as
+  `C:\Tools\nginx-VERSION`; there is no container or Windows service to install.
 
-If you have already cloned the repository, open PowerShell in that checkout.
-Otherwise:
-
-```powershell
-git clone https://github.com/bytedance/deer-flow.git
-Set-Location deer-flow
-```
-
-Check the prerequisites:
+Reopen PowerShell after PATH changes. Install the pinned pnpm version using
+`npm.cmd`, which avoids PowerShell's script execution policy for npm shims:
 
 ```powershell
+npm.cmd install --global pnpm@10.26.2
 git --version
-docker compose version
-docker info
+node --version
+python --version
+uv --version
+pnpm.cmd --version
+nginx.exe -v
 ```
 
-Run the remaining PowerShell commands from the **repository root**, where
-`Makefile`, `backend`, and `frontend` are located.
+If already cloned, open PowerShell in your checkout. Otherwise:
+
+```powershell
+git clone https://github.com/mokaleem/harness.git
+Set-Location harness
+```
+
+Run setup commands from the **repository root**. The examples below assume
+your existing checkout is `D:\poc\deer-flow`; substitute your own path.
 
 ### 2. Create and configure local files
 
-Copy missing templates. These commands preserve existing files:
+Copy missing templates; these commands preserve existing configuration:
 
 ```powershell
 if (!(Test-Path config.yaml)) {
@@ -68,11 +75,206 @@ if (!(Test-Path frontend/.env)) {
 }
 ```
 
-Configure at least one model before starting. Get the endpoint, model ID, and
-credentials from your team's model platform owner. The model must support tool
-calling. In `config.yaml`, replace the top-level `models:` section with your
-approved provider configuration. For an OpenAI-compatible Chat Completions
-endpoint, the shape is:
+Follow [model and sandbox configuration](#configure-your-model-and-sandbox)
+before starting. The example configuration needs a working model entry.
+
+### 3. Install dependencies
+
+```powershell
+Push-Location backend
+uv sync --locked --all-packages --python 3.12
+Pop-Location
+python .\scripts\pnpm.py install --frozen-lockfile
+```
+
+uv creates `backend/.venv`; you do not need to activate it. The pnpm runner
+uses the Windows command shim and runs in `frontend/` automatically. Check each
+command succeeds before continuing. Optional integrations may need additional
+extras; see [development commands](#development-commands).
+
+### 4. Start the native services
+
+Use three PowerShell terminals so logs remain visible and each service can be
+restarted independently. Start the Gateway and frontend before nginx.
+
+**Terminal 1 — Gateway:**
+
+```powershell
+Set-Location D:\poc\deer-flow
+$env:DEER_FLOW_PROJECT_ROOT = (Get-Location).Path
+$env:DEER_FLOW_HOME = Join-Path $env:DEER_FLOW_PROJECT_ROOT "backend/.deer-flow"
+$env:GATEWAY_WORKERS = "1"
+New-Item -ItemType Directory -Force -Path $env:DEER_FLOW_HOME | Out-Null
+Set-Location backend
+uv run --no-sync uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001 --env-file ../.env
+```
+
+`--env-file` loads the root `.env`, including your model credentials. This
+command runs one Gateway process. Restart it after backend code, dependencies,
+configuration, or credential changes.
+
+**Terminal 2 — frontend:**
+
+```powershell
+Set-Location D:\poc\deer-flow
+$env:PORT = "3000"
+$env:DEER_FLOW_INTERNAL_GATEWAY_BASE_URL = "http://127.0.0.1:8001"
+$env:DEER_FLOW_TRUSTED_ORIGINS = "http://localhost:2026,http://localhost:3000"
+python .\scripts\pnpm.py run dev -- --hostname 127.0.0.1
+```
+
+The frontend uses hot reload. Wait for its ready message.
+
+**Terminal 3 — nginx and verification:**
+
+```powershell
+Set-Location D:\poc\deer-flow
+New-Item -ItemType Directory -Force -Path logs,temp/client_body_temp,temp/proxy_temp,temp/fastcgi_temp,temp/uwsgi_temp,temp/scgi_temp | Out-Null
+$nginxPrefix = (Get-Location).Path.Replace('\', '/') + '/'
+nginx.exe -t -p $nginxPrefix -c docker/nginx/nginx.local.conf
+```
+
+Only after nginx reports that its configuration test succeeded:
+
+```powershell
+nginx.exe -p $nginxPrefix -c docker/nginx/nginx.local.conf
+Invoke-RestMethod http://localhost:2026/health
+Invoke-RestMethod http://localhost:2026/health/ready
+```
+
+nginx runs in the background on Windows. The prefix makes its logs and PID file
+belong to this checkout, and uses the forward-slash paths required by nginx.
+The file under `docker/nginx/` is also the existing **native local** proxy
+configuration; using it does not run Docker.
+
+Open **http://localhost:2026**, complete account setup or sign-in, select your
+configured model, and send a short chat message. `/health` checks reachability;
+`/health/ready` checks runtime readiness. The chat also checks model connectivity.
+
+### 5. Stop and restart
+
+Press **Ctrl+C** in the Gateway and frontend terminals. From the third terminal,
+stop nginx gracefully using the same prefix:
+
+```powershell
+nginx.exe -p $nginxPrefix -c docker/nginx/nginx.local.conf -s quit
+```
+
+To start again, repeat the three service commands. To follow proxy errors:
+
+```powershell
+Get-Content .\logs\nginx-error.log -Tail 50 -Wait
+```
+
+## Local setup on macOS
+
+### 1. Install prerequisites and open the repository
+
+Use company-approved native installations of Git, Node.js **22 or newer**,
+Python **3.12**, uv, pnpm **10.26.2**, and nginx. Download
+[Node.js](https://nodejs.org/en/download),
+[Python for macOS](https://www.python.org/downloads/macos/), and
+[Git](https://git-scm.com/install/mac) through your approved distribution.
+With an approved Homebrew installation,
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[nginx](https://formulae.brew.sh/formula/nginx) can be installed with:
+
+```bash
+brew install uv nginx
+npm install --global pnpm@10.26.2
+git --version
+node --version
+python3 --version
+uv --version
+pnpm --version
+nginx -v
+```
+
+Install Node.js and Python before these commands. Do not start Homebrew's
+global nginx service; the app uses its own configuration and process.
+
+If already cloned, open Terminal in that checkout. Otherwise:
+
+```bash
+git clone https://github.com/mokaleem/harness.git
+cd harness
+```
+
+### 2. Configure and install dependencies
+
+From the repository root, copy missing templates:
+
+```bash
+test -e config.yaml || cp config.example.yaml config.yaml
+test -e extensions_config.json || cp extensions_config.example.json extensions_config.json
+test -e .env || cp .env.example .env
+test -e frontend/.env || cp frontend/.env.example frontend/.env
+```
+
+Follow [model and sandbox configuration](#configure-your-model-and-sandbox),
+then install dependencies:
+
+```bash
+cd backend
+uv sync --locked --all-packages --python 3.12
+cd ..
+python3 scripts/pnpm.py install --frozen-lockfile
+```
+
+### 3. Start and verify the native services
+
+Open three terminals in the **same repository root**.
+
+**Terminal 1 — Gateway:**
+
+```bash
+export DEER_FLOW_PROJECT_ROOT="$PWD"
+export DEER_FLOW_HOME="$PWD/backend/.deer-flow"
+export GATEWAY_WORKERS=1
+mkdir -p "$DEER_FLOW_HOME"
+cd backend
+uv run --no-sync uvicorn app.gateway.app:app --host 127.0.0.1 --port 8001 --env-file ../.env
+```
+
+**Terminal 2 — frontend:**
+
+```bash
+export PORT=3000
+export DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://127.0.0.1:8001
+export DEER_FLOW_TRUSTED_ORIGINS=http://localhost:2026,http://localhost:3000
+python3 scripts/pnpm.py run dev -- --hostname 127.0.0.1
+```
+
+**Terminal 3 — nginx:**
+
+```bash
+mkdir -p logs temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp temp/scgi_temp
+nginx -t -p "$PWD/" -c docker/nginx/nginx.local.conf
+```
+
+After its configuration test succeeds, keep nginx running in this terminal:
+
+```bash
+nginx -p "$PWD/" -c docker/nginx/nginx.local.conf -g 'daemon off;'
+```
+
+Open **http://localhost:2026**. In another terminal, verify:
+
+```bash
+curl --fail http://localhost:2026/health
+curl --fail http://localhost:2026/health/ready
+```
+
+Sign in and send a short chat to verify the configured model. Stop all three
+foreground processes with **Ctrl+C** in their respective terminals. Restart
+the Gateway after backend or root `.env` changes.
+
+## Configure your model and sandbox
+
+Get the endpoint, model ID, and credentials from your team's model platform
+owner. The model must support tool calling. In `config.yaml`, replace the
+top-level `models:` section with your approved provider configuration. For an
+OpenAI-compatible Chat Completions endpoint:
 
 ```yaml
 models:
@@ -84,198 +286,99 @@ models:
     api_key: $MODEL_API_KEY
 ```
 
-Replace the model ID and add these variables to the **root `.env`** file:
+Replace the model ID and add these variables to the **root `.env`**:
 
 ```dotenv
 MODEL_BASE_URL=https://REPLACE_WITH_TEAM_MODEL_ENDPOINT/v1
 MODEL_API_KEY=REPLACE_WITH_YOUR_KEY
 ```
 
-The placeholders above are not working credentials. Keep the rest of
-`config.yaml`; leave the default `LocalSandboxProvider` and
-`allow_host_bash: false` for the initial setup. With Docker, that provider
-executes in the Gateway container and has access to its mounted files. See the
-[configuration guide](backend/docs/CONFIGURATION.md#sandbox) for isolated shell
-execution and other sandbox providers.
+These placeholders are not working credentials. Azure and other providers
+have their own settings; see [model configuration](backend/docs/CONFIGURATION.md#models).
 
-Keep `frontend/.env` at its defaults to use the same-origin proxy. Optional
-search tools and integrations may need additional credentials. Other model
-providers, including Azure and provider-specific APIs, use their own settings;
-see [model configuration](backend/docs/CONFIGURATION.md#models).
+Keep the rest of `config.yaml`, including its local SQLite database and
+in-process stream defaults. This single-process setup needs no Redis or
+PostgreSQL server. Leave `NEXT_PUBLIC_BACKEND_BASE_URL` and
+`NEXT_PUBLIC_LANGGRAPH_BASE_URL` unset in `frontend/.env` to use nginx's
+same-origin routes. Enable optional search tools only with their required
+credentials.
 
-`config.yaml`, `extensions_config.json`, and `.env` files are gitignored. Store
-credentials there rather than in committed source files.
+Use the native local sandbox configuration:
 
-### 3. Start the app
-
-```powershell
-.\scripts\run-with-git-bash.cmd ./scripts/docker.sh start
+```yaml
+sandbox:
+  use: deerflow.sandbox.local:LocalSandboxProvider
+  allow_host_bash: false
 ```
 
-This is the same launcher used by `make docker-start`. It locates Git Bash,
-checks Compose compatibility, sets the checkout path, selects services for the
-configured sandbox, and builds and starts the dev containers. The first build
-can take several minutes. Kubernetes is only needed if you explicitly configure
-the provisioner sandbox.
+Keep the template's other sandbox settings. This provider handles workspace
+files on the host; it is **not a security isolation boundary**. With
+`allow_host_bash: false`, tools and skills that require shell execution cannot
+run. For a trusted single-user environment, your team can explicitly enable
+`allow_host_bash: true` if workstation policy permits agent command execution.
+Commands then run with your account's privileges; native Windows can use its
+PowerShell/cmd fallback. Skills written for Unix shell commands may still need
+Windows-compatible scripts. For isolated execution without a local container
+runtime, configure a company-approved remote sandbox provider; see
+[sandbox configuration](backend/docs/CONFIGURATION.md#sandbox).
 
-Open **http://localhost:2026** when services are ready. Complete the account
-setup or sign-in shown by the application, then select your configured model
-and send a short chat message.
-
-Check the Gateway separately:
-
-```powershell
-Invoke-RestMethod http://localhost:2026/health
-```
-
-A successful health response confirms the Gateway is reachable. The chat check
-also verifies model credentials and connectivity.
-
-### 4. Logs, restart, and stop
-
-```powershell
-# Follow Gateway logs; Ctrl+C stops following logs.
-.\scripts\run-with-git-bash.cmd ./scripts/docker.sh logs --gateway
-
-# Apply changes to root .env, or rebuild after dependency changes.
-.\scripts\run-with-git-bash.cmd ./scripts/docker.sh start
-
-# Stop the development stack.
-.\scripts\run-with-git-bash.cmd ./scripts/docker.sh stop
-```
-
-Source changes in the mounted backend and frontend directories reload
-automatically. Changes to container environment variables need the start
-command again so Compose can recreate the affected service. Restart the
-Gateway after changing settings documented as requiring a restart.
-
-## Local development in WSL2
-
-Use this path to run the application services directly in Linux on a Windows
-machine. Docker is optional with the default local sandbox. These commands run
-in **Ubuntu inside WSL2**, except the initial Windows command.
-
-1. If WSL2 is not installed, run the following in an administrator PowerShell
-   terminal, then follow the reboot and Ubuntu account prompts. See
-   [Microsoft's WSL installation guide](https://learn.microsoft.com/en-us/windows/wsl/install).
-
-   ```powershell
-   wsl --install -d Ubuntu
-   ```
-
-2. Open Ubuntu. Install Git, Make, nginx, curl, and the process inspection tool:
-
-   ```bash
-   sudo apt update
-   sudo apt install -y git make nginx curl lsof python3 python3-venv
-   ```
-
-   Install **Node.js 22 or newer** using the
-   [official Node.js instructions](https://nodejs.org/en/download) for Linux.
-   Install uv using its [official installer](https://docs.astral.sh/uv/getting-started/installation/),
-   then open a new Ubuntu terminal so its PATH changes apply:
-
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-   Install the repository's pinned pnpm version and Python runtime:
-
-   ```bash
-   npm install --global pnpm@10.26.2
-   uv python install 3.12
-   ```
-
-3. Clone into the Linux filesystem, such as `~/src/deer-flow`. Keep this checkout
-   separate from the Windows Docker checkout and its dependencies.
-
-   ```bash
-   mkdir -p ~/src
-   cd ~/src
-   git clone https://github.com/bytedance/deer-flow.git
-   cd deer-flow
-   make check
-   make install
-   make setup
-   ```
-
-   The setup wizard creates `config.yaml` and writes provider credentials to the
-   root `.env`. Choose your approved model provider and skip optional services
-   you do not need. For manual configuration, use `make config` instead of
-   `make setup`, then configure the model and `.env` as described above.
-
-4. Start and verify the app:
-
-   ```bash
-   make doctor
-   make dev
-   ```
-
-   Open **http://localhost:2026** in your Windows browser. Logs are in
-   `logs/gateway.log`, `logs/frontend.log`, and `logs/nginx.log`. To stop, run
-   `make stop` from the same checkout in another Ubuntu terminal.
+`config.yaml`, `extensions_config.json`, and `.env` files are gitignored.
+Keep credentials in those files or the approved secret system.
 
 ## Development commands
 
-For Docker development, run checks inside the running containers from
-PowerShell:
-
-```powershell
-docker exec -w /app/backend deer-flow-gateway uv run --no-sync pytest -m "not live" --ignore=tests/blocking_io tests/ -q
-docker exec -w /app/backend deer-flow-gateway uv run --no-sync ruff check .
-docker exec -w /app/backend deer-flow-gateway uv run --no-sync ruff format --check .
-docker exec -w /app/frontend deer-flow-frontend pnpm check
-docker exec -w /app/frontend deer-flow-frontend pnpm test
-```
-
-For WSL2 development:
+Run backend commands from `backend/`; frontend commands below use the runner
+from the repository root (`python3` instead of `python` on macOS):
 
 | Location | Command | Purpose |
 | --- | --- | --- |
-| Repository root | `make dev` / `make stop` | Start / stop local services |
-| Repository root | `make doctor` | Diagnose configuration and dependencies |
-| Repository root | `make support-bundle` | Create redacted troubleshooting artifacts |
-| `backend/` | `make test` | Run offline tests, excluding blocking I/O tests |
-| `backend/` | `make test-blocking-io` | Run the separate blocking I/O suite |
-| `backend/` | `make lint` / `make format` | Check / fix Python style |
-| `frontend/` | `pnpm check` | Lint and type check |
-| `frontend/` | `pnpm test` | Run unit tests |
+| `backend/` | `uv run --no-sync pytest -m "not live" --ignore=tests/blocking_io tests/ -q` | Offline backend tests |
+| `backend/` | `uv run --no-sync pytest tests/blocking_io -q` | Blocking I/O tests |
+| `backend/` | `uv run --no-sync ruff check .` | Check Python style |
+| `backend/` | `uv run --no-sync ruff format .` | Format Python |
+| Repository root | `python scripts/pnpm.py check` | Frontend lint and type check |
+| Repository root | `python scripts/pnpm.py test` | Frontend unit tests |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow and
+If enabling optional browser, PostgreSQL, or other integration features, add
+the corresponding extras when syncing, for example
+`uv sync --locked --all-packages --python 3.12 --extra browser` from `backend/`.
+Keep all required extras in subsequent sync commands. Browser automation also
+needs Chromium installed with `uv run --no-sync playwright install chromium`
+from `backend/`; see the [configuration guide](backend/docs/CONFIGURATION.md).
+Restart affected services after dependency changes.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the wider development workflow and
 [RELEASING.md](RELEASING.md) for version and release rules.
 
 ## Troubleshooting
 
 | Problem | What to check |
 | --- | --- |
-| Docker daemon cannot be reached | Start Docker Desktop and check `docker info`. Use Linux containers. |
-| `env_file ... must be a string` | Upgrade to Compose 2.24 or newer. |
-| Git Bash cannot be found | Install Git for Windows with Bash included; reopen PowerShell and check that `git` is on PATH. |
-| Missing config or no models | Ensure `config.yaml` is at the repository root and has an active model entry; the template alone does not configure one. |
-| Model request fails | Check the model ID, endpoint, root `.env` variable names, and Gateway logs. Rerun the Docker start command after `.env` changes. |
-| A model or MCP service runs on the Windows host | Containers reach the host through `host.docker.internal`; `localhost` inside the Gateway refers to that container. |
-| Port 2026 is already occupied | Stop the conflicting service. For Docker, set `$env:PORT = "2027"` in PowerShell, start again, and use `http://localhost:2027`. |
-| Corporate network blocks image or package downloads | Configure Docker Desktop's approved proxy and use your team's package registries; the build supports `UV_INDEX_URL` and `NPM_REGISTRY` environment variables. |
-| WSL command is missing | Install the dependency inside Ubuntu; Windows installations do not replace Linux dependencies. |
-
-Use the Windows launcher for sandbox-aware startup. Direct Compose commands
-need an explicit `DEER_FLOW_ROOT` and the correct sandbox overlays; see
-[CONTRIBUTING.md](CONTRIBUTING.md#option-1-docker-development-recommended).
+| `npm.ps1` or `pnpm.ps1` is blocked | Use `npm.cmd` / `pnpm.cmd`, or the documented Python pnpm runner. No execution-policy change is needed. |
+| Command not found | Reopen your terminal after installing; verify Python, Node, uv, pnpm, and nginx are on PATH. |
+| Python launches the Microsoft Store | Install approved Python 3.12 and fix PATH/app execution aliases so `python --version` runs it. |
+| Missing config or no models | Ensure root `config.yaml` has a working model entry and the root `.env` has matching credentials. |
+| Model request fails | Check the model ID, endpoint, variable names, and Gateway terminal logs; restart the Gateway after root `.env` edits. |
+| Package downloads fail on the corporate network | Use approved registries, proxy settings, and the enterprise CA. Set `UV_INDEX_URL` for uv and configure npm's registry; do not disable TLS verification. |
+| nginx configuration test fails | Check port availability, PATH, writable `logs/` and `temp/`, and the checkout prefix. If IPv6 is disabled, adjust the `[::]:2026` listener in your local proxy configuration. |
+| Browser shows 502 | Ensure the Gateway is listening on 8001 and the frontend on 3000; check their terminals and `logs/nginx-error.log`. |
+| Port 2026 is occupied | Stop the conflicting process. Changing root `.env` `PORT` does not change native nginx; its listener is in `docker/nginx/nginx.local.conf`. |
+| A skill cannot execute a command | Check `sandbox.allow_host_bash`, workstation policy, required CLI dependencies, and whether its scripts support your operating system. |
 
 ## Architecture and capabilities
 
 | Component | Role |
 | --- | --- |
-| nginx, port 2026 | Browser entry point; proxies frontend and API requests |
+| Native nginx, port 2026 | Browser entry point; proxies frontend, API, SSE, and WebSocket requests |
 | Next.js frontend, port 3000 | Chat and workspace UI |
 | FastAPI Gateway, port 8001 | REST APIs and embedded LangGraph agent runtime |
-| Redis, Docker dev stack | Stream delivery across Gateway workers |
-| Optional provisioner, port 8002 | Kubernetes sandbox lifecycle |
+| Local SQLite and files | Developer runtime state; no external database needed |
+| Optional remote sandbox | Isolated execution when configured |
 
-The harness supports skills, built-in and MCP tools, native subagents, ACP agent
-processes, memory, file workspaces, streaming, and optional scheduled tasks.
-Internal and external contributions follow the same integration mechanisms;
-ownership and execution protocol are separate choices. See the
+The harness supports skills, built-in and MCP tools, native subagents, ACP
+agent processes, memory, file workspaces, streaming, and optional scheduled
+tasks. Internal and external contributions follow the same integration
+mechanisms; ownership and execution protocol are separate choices. See the
 [capability inventory](docs/capabilities.html) for support boundaries.
 
 The Python harness lives in `backend/packages/harness`; the Gateway lives in
@@ -290,12 +393,11 @@ appropriate authentication, authorization, and sandbox configuration; see
 ## Documentation
 
 - [Offline extension handbook](docs/index.html): adding internal and external
-  skills, MCP tools, agents, subagents, Python tools, and extensions. Open the
-  HTML file in a browser.
+  skills, MCP tools, agents, subagents, Python tools, and extensions.
 - [Configuration guide](backend/docs/CONFIGURATION.md): providers, tools,
   sandboxes, skills, and environment variables.
 - [Runtime and integration reference](docs/runtime-reference.md): detailed
-  feature behavior, tracing, memory, projects, scheduling, and integration notes.
+  runtime behavior and optional deployment/integration notes.
 - [Enterprise design](docs/enterprise-fit.html): proposed capability registry,
   Typesense discovery, telecom data catalog, and skill promotion workflow.
 - [Backend guide](backend/AGENTS.md) and [frontend guide](frontend/AGENTS.md):
@@ -304,4 +406,4 @@ appropriate authentication, authorization, and sandbox configuration; see
 
 ## License
 
-[MIT](LICENSE). Existing copyright notices are retained in the license.
+[MIT](LICENSE). Existing copyright notices are retained in [LICENSE](LICENSE).

@@ -3,8 +3,10 @@
 Detailed configuration, runtime behavior, and integration notes moved from the
 root README. Start with [local setup](../README.md#local-setup-on-windows) before
 using these examples. Bash and `make` examples below assume Linux, macOS, or a
-WSL2 Linux terminal; use the PowerShell commands in the README for Windows Docker
-setup. Optional integrations require their own credentials and dependencies.
+WSL2 Linux terminal; use the native PowerShell commands in the README for Windows
+setup and the native terminal commands for macOS. Container deployment examples
+are optional server deployment references, not workstation prerequisites.
+Optional integrations require their own credentials and dependencies.
 
 ## Model configuration
 
