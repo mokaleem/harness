@@ -56,8 +56,14 @@ def mock_app_config():
     config.models = [model]
     config.token_usage.enabled = False
     config.skills.deferred_discovery = False
+    config.skills.user_scoped_use = None
+    config.skills.max_search_results = 5
+    config.skills.max_prompt_names = 50
     config.skills.container_path = "/mnt/skills"
     config.tool_search.enabled = False
+    config.tool_search.max_search_results = 5
+    config.tool_search.max_active_tools = 20
+    config.tool_search.max_prompt_names = 50
     config.database.checkpoint_channel_mode = "full"
     config.database.checkpoint_delta.snapshot_frequency = 10
     config.authorization = AuthorizationConfig(enabled=False)
@@ -2032,6 +2038,20 @@ class TestEnsureAgent:
         skill_names_arg = mock_apply_prompt.call_args.kwargs.get("skill_names")
         assert skill_names_arg is not None, "skill_names must be passed when deferred_discovery=True"
         assert "deep-research" in skill_names_arg
+
+    def test_empty_deferred_skill_catalog_does_not_fall_back_to_full_metadata(self, client, mock_app_config):
+        mock_app_config.skills.deferred_discovery = True
+        with (
+            patch("deerflow.client.create_chat_model"),
+            patch("deerflow.client.create_agent", return_value=MagicMock()),
+            patch("deerflow.client.build_middlewares", return_value=[]),
+            patch("deerflow.client.apply_prompt_template", return_value="prompt") as prompt,
+            patch("deerflow.client.get_enabled_skills_for_config", return_value=[]),
+            patch.object(client, "_get_tools", return_value=[]),
+            patch("deerflow.runtime.checkpointer.get_checkpointer", return_value=None),
+        ):
+            client._ensure_agent(client._get_runnable_config("empty-skills"))
+        assert prompt.call_args.kwargs["skill_names"] == frozenset()
 
     def test_deferred_skill_discovery_not_wired_when_disabled(self, client, mock_app_config):
         """When skills.deferred_discovery=False, skill_names is None so the legacy prompt path runs."""

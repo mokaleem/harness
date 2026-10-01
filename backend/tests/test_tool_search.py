@@ -67,7 +67,7 @@ class TestConfigExampleToolSearchSection:
             return
         tool_search = data.get("tool_search")
         assert isinstance(tool_search, dict)
-        assert tool_search.get("enabled") is False
+        assert tool_search.get("enabled") is True
         assert tool_search.get("auto_promote_top_k") == 3
 
 

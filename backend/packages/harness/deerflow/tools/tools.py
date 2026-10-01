@@ -169,7 +169,9 @@ def get_available_tools(
                 cfg.use,
             )
 
-    loaded_tools = [_ensure_sync_invocable_tool(t) for _, t in loaded_tools_raw]
+    from deerflow.tools.builtins.tool_search import tag_deferred_tool
+
+    loaded_tools = [_ensure_sync_invocable_tool(tag_deferred_tool(t) if getattr(cfg, "defer_loading", False) is True else t) for cfg, t in loaded_tools_raw]
 
     # Conditionally add tools based on config
     builtin_tools = BUILTIN_TOOLS.copy()

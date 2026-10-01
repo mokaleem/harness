@@ -1314,6 +1314,7 @@ class SubagentExecutor:
         skill_setup = build_skill_search_setup(
             skills,
             enabled=resolved_app_config.skills.deferred_discovery,
+            max_results=getattr(resolved_app_config.skills, "max_search_results", 5),
             container_base_path=resolved_app_config.skills.container_path,
             skill_authorization=self._resolve_skill_authorization(),
         )
@@ -1354,6 +1355,7 @@ class SubagentExecutor:
         final_tools, deferred_setup = assemble_deferred_tools(
             configured_tools,
             enabled=resolved_app_config.tool_search.enabled,
+            max_results=min(getattr(resolved_app_config.tool_search, "max_search_results", 5), getattr(resolved_app_config.tool_search, "max_active_tools", 20)),
         )
         final_tools.extend(late_tools)
 
@@ -1390,6 +1392,7 @@ class SubagentExecutor:
             if skill_setup.skill_names:
                 skills_section = get_skill_index_prompt_section(
                     skill_names=skill_setup.skill_names,
+                    max_names=getattr(resolved_app_config.skills, "max_prompt_names", 50),
                     container_base_path=resolved_app_config.skills.container_path,
                 )
             else:
@@ -1407,10 +1410,10 @@ class SubagentExecutor:
                 system_parts.append(skills_section)
         # Name the deferred MCP tools in the prompt; their schemas stay withheld
         # until tool_search promotes them. Empty set -> "" -> appends nothing.
-        deferred_section = get_deferred_tools_prompt_section(deferred_names=deferred_setup.deferred_names)
+        deferred_section = get_deferred_tools_prompt_section(deferred_names=deferred_setup.deferred_names, max_names=getattr(resolved_app_config.tool_search, "max_prompt_names", 50))
         if deferred_section:
             system_parts.append(deferred_section)
-        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=deferred_setup.deferred_names)
+        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=deferred_setup.deferred_names, max_names=getattr(resolved_app_config.tool_search, "max_prompt_names", 50))
         if mcp_routing_hints_section:
             system_parts.append(mcp_routing_hints_section)
 

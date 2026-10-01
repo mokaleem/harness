@@ -83,6 +83,11 @@ regression exercises the production extractor under a generous process deadline.
 
 ## Important Development Guidelines
 
+The enterprise package at `../extensions/enterprise/` integrates through extension
+API 0.2.5, the existing middleware chain, skills storage, and sandbox provider ABI.
+It owns its SQL tables, not application migrations. See its nearest AGENTS.md and
+`../docs/enterprise-services.md`. Keep harness → app imports prohibited.
+
 ### Documentation Update Policy
 Every code change must keep docs accurate and current: update `README.md` for
 user-facing behavior and the relevant `AGENTS.md` for development changes.

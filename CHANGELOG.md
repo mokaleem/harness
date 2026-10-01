@@ -13,6 +13,21 @@ This release closes that milestone with **181 merged pull requests**.
 
 ### Added
 
+- **enterprise:** Independently packaged, team-scoped capability registry with
+  immutable revisions, activation/dependency pins and runtime projections;
+  conversation skill capture, parameter validation, native SkillScan, independent
+  review and immutable publication; bounded async dependency retries, shared
+  circuits and escalation receipts; approved remote sandbox broker adapter.
+- **extensions:** API 0.2.5 adds opt-in request-scoped run evidence for backend
+  actions and trusted execution middleware that propagates failures and preserves
+  results under a bounded handler budget. Existing observational behavior remains
+  the default. Template v52 adds configurable per-user skill storage support.
+
+- **discovery:** Configurable skill/tool catalog previews, bounded discovery
+  responses and active deferred schema windows across standard agent paths.
+  Python tools can opt in with `defer_loading`; setup template v52 enables
+  deferred skill and MCP tool discovery. Existing enablement flags are preserved.
+
 #### Scheduler
 
 - **scheduler:** Scheduled tasks can be searched by title or prompt. Finding a
@@ -6304,4 +6319,3 @@ with **180 merged pull requests** since the first 2.0 milestone tag.
 [#6070]: https://github.com/bytedance/deer-flow/pull/6070
 [#6076]: https://github.com/bytedance/deer-flow/pull/6076
 [#6088]: https://github.com/bytedance/deer-flow/pull/6088
-

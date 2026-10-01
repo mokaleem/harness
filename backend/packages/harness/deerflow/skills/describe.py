@@ -40,7 +40,8 @@ class SkillSearchSetup:
     Mirrors ``DeferredToolSetup`` from ``tool_search.py``.
 
     - **Empty** ``(None, frozenset())``: no skills available or skill search
-      disabled.  The agent falls back to the legacy full-metadata prompt.
+      disabled. Disabled discovery uses the legacy prompt; an enabled but empty
+      catalog renders no skill metadata.
     - **Populated**: ``describe_skill_tool`` is appended to the agent's tools,
       ``skill_names`` are rendered in ``<skill_index>`` instead of full metadata.
     """
@@ -54,6 +55,7 @@ def build_describe_skill_tool(
     *,
     container_base_path: str = DEFAULT_SKILLS_CONTAINER_PATH,
     skill_authorization=None,
+    max_results: int | None = None,
 ) -> BaseTool:
     """Build the ``describe_skill`` tool as a closure over *catalog*.
 
@@ -101,6 +103,8 @@ def build_describe_skill_tool(
         return kept
 
     def _command(matched: list, name: str, tool_call_id: str) -> Command:
+        if max_results is not None:
+            matched = matched[:max_results]
         if not matched:
             content = f"No skills matched: {name}"
         else:
@@ -130,7 +134,7 @@ def build_describe_skill_tool(
         SKILL.md via read_file.
 
         Query forms:
-          - "select:data-analysis,deep-research" -- fetch these exact skills (no cap)
+          - "select:data-analysis,deep-research" -- fetch these exact skills
           - "chart visualization" -- keyword search, best matches (up to 5)
           - "+podcast gen" -- require "podcast" in the name, rank by remaining terms (up to 5)
         """
@@ -144,11 +148,14 @@ def build_describe_skill_tool(
 
     from langchain_core.tools import StructuredTool
 
+    description = describe_skill.__doc__
+    if max_results is not None:
+        description += f"\nAll queries, including select:, return at most {max_results} entries. Narrow your query to discover other skills."
     return StructuredTool.from_function(
         func=describe_skill,
         coroutine=adescribe_skill,
         name="describe_skill",
-        description=describe_skill.__doc__,
+        description=description,
         parse_docstring=False,
     )
 
@@ -159,6 +166,7 @@ def build_skill_search_setup(
     enabled: bool,
     container_base_path: str = DEFAULT_SKILLS_CONTAINER_PATH,
     skill_authorization=None,
+    max_results: int | None = None,
 ) -> SkillSearchSetup:
     """Build the skill search setup from a filtered skill list.
 
@@ -177,6 +185,7 @@ def build_skill_search_setup(
             catalog,
             container_base_path=container_base_path,
             skill_authorization=skill_authorization,
+            max_results=max_results,
         ),
         skill_names=catalog.names,
     )
@@ -216,6 +225,7 @@ def get_skill_index_prompt_section(
     skill_names: frozenset[str] = frozenset(),
     container_base_path: str = DEFAULT_SKILLS_CONTAINER_PATH,
     skill_evolution_section: str = "",
+    max_names: int = 50,
 ) -> str:
     """Generate ``<skill_system>`` with a name-only ``<skill_index>``.
 
@@ -227,7 +237,9 @@ def get_skill_index_prompt_section(
     if not skill_names:
         return ""
 
-    names = ", ".join(html.escape(name, quote=False) for name in sorted(skill_names))
+    names = ", ".join(html.escape(name, quote=False) for name in sorted(skill_names)[:max_names])
+    if len(skill_names) > max_names:
+        names += f"\nShowing {max_names} of {len(skill_names)} skills. Use describe_skill with task keywords to search the full catalog, including omitted names."
     evolution = f"\n{skill_evolution_section}" if skill_evolution_section else ""
 
     return f"""<skill_system>

@@ -3,7 +3,17 @@
 A deployment-installed Python extension can register a `PluginContribution` with
 optional browser code, authenticated backend actions and model tools. This extends
 the existing `install(registry, config)` workflow. MCP and Skills keep their existing
-APIs and lifecycles. Public contracts live in `deerflow_extension_api` (0.2.4).
+APIs and lifecycles. Public contracts live in `deerflow_extension_api` (0.2.5).
+
+API 0.2.5 adds opt-in `BackendAction.requires_run_evidence=True`. Such an action
+receives the authenticated request's reader as keyword-only
+`ActionContext.run_evidence_reader`; unavailable hosts return 503 and denied
+scope returns 403 before its handler. Other actions retain existing behavior.
+The [enterprise extension](enterprise-services.md) uses this for conversation
+skill capture. It also uses trusted `MiddlewarePlacement(execution=True,
+max_handler_calls=N)` at TOOL_RAW: failures propagate, return values are preserved,
+and the original admitted request may run at most 1–4 times. Default middleware
+remains observational. Execution hook failures never trigger fail-open fallback.
 
 The browser contribution API is experimental. `BrowserModule(code=...)` remains the
 self-contained transport; `BrowserAssets(root=...)` adds manifest-listed resources

@@ -120,6 +120,8 @@ class ExtensionRegistry(ExtensionRegistryContract):
             tool_names.add(tool.name)
         names = set()
         for action in contribution.backend:
+            if type(action.requires_run_evidence) is not bool:
+                raise ValueError("requires_run_evidence must be boolean")
             if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", action.name) or action.name in names or not inspect.iscoroutinefunction(action.handler):
                 raise ValueError("Backend actions require unique names and async handlers")
             names.add(action.name)

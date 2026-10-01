@@ -1,5 +1,15 @@
 ### Agent System
 
+Middleware descriptors include an optional public `execution_contract` from the
+outer extension wrapper. Its handler budget and propagate-failure mode contribute
+to assembly identity; default observational wrappers preserve existing fingerprints.
+Do not lose these host semantics when unwrapping to an extension's inner middleware.
+
+Standard lead/bootstrap/embedded/subagent assembly propagates bounded discovery
+settings. Promotion order now represents discovery recency: reselecting a name
+moves it to the end, while a changed catalog hash discards prior promotions.
+Keep model schema caps and discovery result caps aligned across assembly paths.
+
 `AppConfig.lead_prompt_overlay` wraps the fully rendered lead system prompt with
 literal operator prepend/append text. Do not template-format these extensions
 or source them from run context. The graph and assembly descriptor must see the

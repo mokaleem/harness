@@ -136,7 +136,14 @@ def get_or_new_user_skill_storage(user_id: str, **kwargs) -> SkillStorage:
             _user_scoped_storages.move_to_end(safe_id)
             return cached[1]
 
-        storage = UserScopedSkillStorage(safe_id, **kwargs)
+        user_scoped_use = getattr(app_config.skills, "user_scoped_use", None)
+        if user_scoped_use:
+            from deerflow.reflection import resolve_class
+
+            storage_class = resolve_class(user_scoped_use, UserScopedSkillStorage)
+        else:
+            storage_class = UserScopedSkillStorage
+        storage = storage_class(safe_id, **kwargs)
         _user_scoped_storages[safe_id] = (app_config, storage)
         _user_scoped_storages.move_to_end(safe_id)
         # Evict least-recently-used entry if cache exceeds the ceiling.

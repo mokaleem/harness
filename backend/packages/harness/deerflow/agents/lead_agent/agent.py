@@ -707,7 +707,7 @@ def build_middlewares(
     if deferred_setup is not None and deferred_setup.deferred_names:
         from deerflow.agents.middlewares.deferred_tool_filter_middleware import DeferredToolFilterMiddleware
 
-        middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash))
+        middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash, max_active_tools=getattr(resolved_app_config.tool_search, "max_active_tools", 20)))
         from deerflow.agents.middlewares.mcp_routing_middleware import assert_mcp_routing_before_deferred_filter
 
         assert_mcp_routing_before_deferred_filter(middlewares)
@@ -1144,6 +1144,7 @@ def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -> Le
         skill_setup = build_skill_search_setup(
             bootstrap_skills,
             enabled=skill_search_enabled,
+            max_results=getattr(resolved_app_config.skills, "max_search_results", 5),
             container_base_path=container_base_path,
             skill_authorization=skill_authorization,
         )
@@ -1166,7 +1167,9 @@ def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -> Le
         )
         configured_tools = [tool for tool in authorized_tools if id(tool) in configured_tool_ids]
         late_tools = [tool for tool in authorized_tools if id(tool) not in configured_tool_ids]
-        final_tools, setup = assemble_deferred_tools(configured_tools, enabled=resolved_app_config.tool_search.enabled)
+        final_tools, setup = assemble_deferred_tools(
+            configured_tools, enabled=resolved_app_config.tool_search.enabled, max_results=min(getattr(resolved_app_config.tool_search, "max_search_results", 5), getattr(resolved_app_config.tool_search, "max_active_tools", 20))
+        )
         final_tools.extend(late_tools)
         mcp_routing_middleware = build_mcp_routing_middleware(
             final_tools,
@@ -1268,6 +1271,7 @@ def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -> Le
     skill_setup = build_skill_search_setup(
         enabled_skills,
         enabled=skill_search_enabled,
+        max_results=getattr(resolved_app_config.skills, "max_search_results", 5),
         container_base_path=container_base_path,
         skill_authorization=skill_authorization,
     )
@@ -1315,14 +1319,16 @@ def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -> Le
     )
     configured_tools = [tool for tool in authorized_tools if id(tool) in configured_tool_ids]
     late_tools = [tool for tool in authorized_tools if id(tool) not in configured_tool_ids]
-    final_tools, setup = assemble_deferred_tools(configured_tools, enabled=resolved_app_config.tool_search.enabled)
+    final_tools, setup = assemble_deferred_tools(
+        configured_tools, enabled=resolved_app_config.tool_search.enabled, max_results=min(getattr(resolved_app_config.tool_search, "max_search_results", 5), getattr(resolved_app_config.tool_search, "max_active_tools", 20))
+    )
     final_tools.extend(late_tools)
     mcp_routing_middleware = build_mcp_routing_middleware(
         final_tools,
         setup,
         top_k=resolved_app_config.tool_search.auto_promote_top_k,
     )
-    mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=setup.deferred_names)
+    mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=setup.deferred_names, max_names=getattr(resolved_app_config.tool_search, "max_prompt_names", 50))
     middlewares = build_middlewares(
         config,
         model_name=model_name,
@@ -1347,7 +1353,7 @@ def _assemble_lead_agent(config: RunnableConfig, *, app_config: AppConfig) -> Le
         deferred_names=setup.deferred_names,
         mcp_routing_hints_section=mcp_routing_hints_section,
         user_id=resolved_user_id,
-        skill_names=skill_setup.skill_names or None,
+        skill_names=skill_setup.skill_names if skill_search_enabled else None,
         allowed_subagents=allowed_subagents,
         subagent_execution_capacity=subagent_execution_capacity,
         interaction_policy=interaction_policy,

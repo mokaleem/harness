@@ -1,5 +1,18 @@
 ### Skills System (`packages/harness/deerflow/skills/`)
 
+The enterprise extension provides read-only published global/per-user storage
+classes selected through `skills.use` / `skills.user_scoped_use`. Registry activation
+owns enabled state; personal, legacy, and integration folders do not augment that
+deployment catalog. Publication reuses the native analyzer and SkillScan, binds
+review to the candidate digest, and requires an independent administrator. Its
+workflow is in `extensions/enterprise/`, not in the skill-creator mutation path.
+
+Deferred discovery caps prompt names and generated describe results using
+`skills.max_prompt_names` and `skills.max_search_results`. Omitted skills remain
+searchable; standalone catalog APIs retain their legacy exact-selection contract.
+Metadata remains passive; only explicit activation or instruction loading applies
+skill policy and request-scoped secrets.
+
 - **Integration package boundaries**: recurse through provider and namespace directories, but stop at each package's `SKILL.md`. Nested fixtures must neither become catalog entries nor shadow real public skills; regression coverage lives in `tests/test_user_scoped_skill_storage.py`.
 - **Location**: global public skills live under `deer-flow/skills/public/`; user-authored custom skills live under `{DEER_FLOW_HOME}/users/{user_id}/skills/custom/`; globally managed integration skills live under `{DEER_FLOW_HOME}/integrations/skills/{provider}/`; per-user integration credentials remain under `{DEER_FLOW_HOME}/users/{user_id}/integrations/{provider}/{config,data}`
 - **Format**: Directory with `SKILL.md` (YAML frontmatter: name, description, license, allowed-tools as a spec-compatible string or YAML list, argument-hint, required-secrets). Exact portable spellings such as `Bash`, `WebFetch`, `WebSearch`, `Glob`, `Grep`, `Read`, `Write`, and `Edit` map to `bash`, `web_fetch`, `web_search`, `glob`, `grep`, `read_file`, `write_file`, and `str_replace`; lowercase or otherwise unknown scalar names and YAML-list entries preserve their exact runtime spelling. Argument-scoped entries remain literal and inactive because the tool policy does not inspect arguments; the scalar tokenizer keeps spaces, quotes, and escaped parentheses inside patterns intact.

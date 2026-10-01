@@ -91,6 +91,18 @@ def _ctx() -> AgentBuildContext:
     return AgentBuildContext(scope=AgentScope.LEAD)
 
 
+def test_each_contribution_retains_its_execution_contract():
+    observer = MiddlewarePlacement(_Probe("observe"), Placement.TOOL_VISIBLE)
+    interceptor = MiddlewarePlacement(_Probe("execute"), Placement.TOOL_RAW, execution=True, max_handler_calls=3)
+    merged, _, diagnostics = inject_middlewares(_stack(), _ANCHORS, AgentScope.LEAD, _ctx(), _extensions(observer, interceptor))
+    assert not diagnostics
+    contributed = {m.inner.tag: m for m in merged if hasattr(m, "inner")}
+    assert contributed["observe"]._execution is False
+    assert contributed["observe"]._max_handler_calls == 1
+    assert contributed["execute"]._execution is True
+    assert contributed["execute"]._max_handler_calls == 3
+
+
 def _tags(stack: list[object]) -> list[str]:
     from deerflow.extensions.isolation import IsolatedMiddleware
 

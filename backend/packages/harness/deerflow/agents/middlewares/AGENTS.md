@@ -1,5 +1,10 @@
 ### Middleware Chain
 
+DeferredToolFilterMiddleware's `max_active_tools` caps the most recently promoted
+deferred schemas per model request and blocks calls outside that window. A new
+`tool_search` refreshes an older name. The assembly configuration reserves room
+for search results plus routing promotions. This cap does not replace authorization.
+
 Compaction keeps state `SystemMessage`s; transient instructions use request
 wrappers, and fully rescued partitions skip compaction. If latest-user rescue
 empties an AI/Tool-only window, use `_build_summary_input_text(strategy="last")`;

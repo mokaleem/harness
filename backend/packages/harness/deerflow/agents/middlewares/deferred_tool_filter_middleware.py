@@ -1,6 +1,6 @@
 """Middleware to filter deferred tool schemas from model binding.
 
-When tool_search is enabled, MCP tools are still passed to ToolNode for
+When tool_search is enabled, deferred tools are still passed to ToolNode for
 execution, but their schemas must NOT be sent to the LLM via bind_tools until
 the model has discovered them via tool_search. This middleware removes the
 still-deferred tools from request.tools before model binding, and blocks tool
@@ -34,22 +34,29 @@ class DeferredToolFilterMiddleware(AgentMiddleware[AgentState]):
     promoted (recorded in ``state["promoted"]`` under the current catalog hash).
     """
 
-    def __init__(self, deferred_names: frozenset[str], catalog_hash: str | None):
+    def __init__(self, deferred_names: frozenset[str], catalog_hash: str | None, *, max_active_tools: int | None = None):
         super().__init__()
         self._deferred = deferred_names
         self._catalog_hash = catalog_hash
+        if max_active_tools is not None and max_active_tools < 1:
+            raise ValueError("max_active_tools must be positive")
+        self._max_active_tools = max_active_tools
 
     def release_policy_parameters(self) -> dict[str, object]:
         return {
             "deferred_names": sorted(self._deferred),
             "catalog_hash": self._catalog_hash,
             "promotion_scope": "graph_state_catalog_hash",
+            "max_active_tools": self._max_active_tools,
         }
 
     def _promoted(self, state) -> set[str]:
         promoted = (state or {}).get("promoted")
         if promoted and promoted.get("catalog_hash") == self._catalog_hash:
-            return set(promoted.get("names") or [])
+            names = list(dict.fromkeys(name for name in (promoted.get("names") or []) if isinstance(name, str) and name in self._deferred))
+            if self._max_active_tools is not None:
+                names = names[-self._max_active_tools :]
+            return set(names)
         return set()
 
     def _hidden(self, state) -> set[str]:
@@ -74,7 +81,7 @@ class DeferredToolFilterMiddleware(AgentMiddleware[AgentState]):
             return None
         tool_call_id = str(request.tool_call.get("id") or "missing_tool_call_id")
         return ToolMessage(
-            content=(f"Error: Tool '{name}' is deferred and has not been promoted yet. Call tool_search first to expose and promote this tool's schema, then retry."),
+            content=(f"Error: Tool '{name}' is outside the active deferred schema window. Call tool_search first to expose or refresh this tool's schema, then retry."),
             tool_call_id=tool_call_id,
             name=name,
             status="error",

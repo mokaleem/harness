@@ -1,0 +1,13 @@
+:host { color: inherit; font: 14px/1.5 system-ui, sans-serif; }
+h2, h3 { margin: 0 0 12px; }
+p { max-width: 76ch; }
+section, article { border: 1px solid #93a6aa66; border-radius: 8px; padding: 16px; margin: 16px 0; }
+label { display: block; margin: 12px 0 4px; font-weight: 600; }
+textarea, input { display: block; box-sizing: border-box; width: 100%; padding: 9px; border: 1px solid #93a6aa; border-radius: 4px; background: transparent; color: inherit; }
+textarea { min-height: 180px; font: 13px/1.5 ui-monospace, monospace; }
+button { padding: 8px 12px; margin: 8px 8px 0 0; border: 1px solid #93a6aa; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+button:hover { background: #93a6aa22; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #15847c; outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: wait; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 350px; overflow: auto; }
+[role=alert] { color: #d04747; }

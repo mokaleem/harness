@@ -1,5 +1,12 @@
 ### Gateway API (`app/gateway/`)
 
+Opt-in plugin actions (`requires_run_evidence=True`, extension API 0.2.5) receive
+only a request-scoped reader in `ActionContext`. Resolve it after authentication
+and action authorization; unavailable readers return 503, scope denial returns
+403, and neither reaches the handler. Ordinary actions keep their old behavior.
+PermissionError from contributed actions maps to 403; preserve intentional
+HTTPException responses. Do not fall back to the extension service's global reader.
+
 Reject external run/state writes with `sandbox`, `thread_data`, or `viewed_images`.
 
 Studio retains sanitized creation metadata.

@@ -7,11 +7,12 @@ and an authenticated principal for each admitted call; this is not a sandbox.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from deerflow_extension_api.auth import ExtensionPrincipal
+from deerflow_extension_api.run_evidence import RunEvidenceReader
 from deerflow_extension_api.settings import FrontendBinding, SettingsContribution, SettingsField, SettingValue
 
 
@@ -19,12 +20,15 @@ from deerflow_extension_api.settings import FrontendBinding, SettingsContributio
 class ActionContext:
     principal: ExtensionPrincipal
     settings: Mapping[str, SettingValue]
+    # Keyword-only preserves positional ToolContext construction in released plugins.
+    run_evidence_reader: RunEvidenceReader | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
 class BackendAction:
     name: str
     handler: Callable[[Mapping[str, Any], ActionContext], Awaitable[Any]]
+    requires_run_evidence: bool = False
 
 
 @dataclass(frozen=True)

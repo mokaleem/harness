@@ -1,5 +1,13 @@
 ### Sandbox System (`packages/harness/deerflow/sandbox/`)
 
+`extensions/enterprise/deerflow_enterprise/sandbox.py` implements an optional
+approved HTTPS broker adapter. Policy receipts bind user/thread identity and exact
+CPU, memory, disk, network, path, lifetime and transfer limits. The broker must
+enforce these outside the Gateway; a configuration receipt is not OS isolation.
+No local fallback or ambiguous RPC replay is permitted. Keep `get/get_scoped`
+in-memory while lifecycle RPCs use a separate lock. See the broker contract in
+`docs/enterprise-services.md`; live deployment approval is not part of unit tests.
+
 Sandbox restore requires a thread ID, even forks.
 
 **Network approval policy**: `SandboxMiddleware` uses

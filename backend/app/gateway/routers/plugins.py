@@ -136,11 +136,25 @@ async def invoke_plugin_action(request: Request, namespace: str, action_name: st
         raise HTTPException(422, "Plugin action requires a JSON object.") from exc
     try:
         async with asyncio.timeout(30):
-            return await action.handler(MappingProxyType(payload), ActionContext(principal, MappingProxyType(settings)))
+            reader = None
+            if action.requires_run_evidence:
+                from deerflow_extension_api.run_evidence import require_run_evidence_reader
+
+                try:
+                    reader = require_run_evidence_reader(request)
+                except NotImplementedError as exc:
+                    raise HTTPException(503, "Request-scoped run evidence unavailable.") from exc
+                except PermissionError as exc:
+                    raise HTTPException(403, "Run evidence access denied.") from exc
+            return await action.handler(MappingProxyType(payload), ActionContext(principal, MappingProxyType(settings), run_evidence_reader=reader))
     except TimeoutError as exc:
         raise HTTPException(504, "Plugin action timed out.") from exc
     except ValueError as exc:
         raise HTTPException(422, "Invalid plugin action input.") from exc
+    except PermissionError as exc:
+        raise HTTPException(403, "Plugin action access denied.") from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.warning("Plugin action failed: %s/%s (%s)", namespace, action_name, type(exc).__name__)
         raise HTTPException(502, "Plugin action failed.") from exc

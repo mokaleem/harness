@@ -17,4 +17,5 @@ class ToolConfig(BaseModel):
         ...,
         description="Variable name of the tool provider(e.g. deerflow.sandbox.tools:bash_tool)",
     )
+    defer_loading: bool = Field(default=False, description="Discover this Python tool via tool_search instead of binding its schema eagerly; requires tool_search.enabled")
     model_config = ConfigDict(extra="allow")

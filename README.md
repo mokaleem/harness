@@ -381,6 +381,18 @@ tasks. Internal and external contributions follow the same integration
 mechanisms; ownership and execution protocol are separate choices. See the
 [capability inventory](docs/capabilities.html) for support boundaries.
 
+The setup template enables deferred discovery with bounded catalog previews and
+tool schemas. Interactive chats already support clarification questions and
+forms before execution. See [discovery and clarification](docs/discovery-and-clarification.md)
+for settings, existing-config upgrade steps, and telecom examples.
+
+The optional [enterprise extension](docs/enterprise-services.md) adds an
+authoritative capability registry, a **Create a skill** release workflow,
+dependency retry/circuit policies, and an approved remote sandbox adapter.
+It is independently packaged to keep enterprise services separate from the
+engine. Setup includes native Windows/macOS commands; production validation
+and remote resource enforcement use your approved services.
+
 The Python harness lives in `backend/packages/harness`; the Gateway lives in
 `backend/app`; the public extension contract lives in
 `backend/packages/extension-api`. Applications can embed `DeerFlowClient`; see
@@ -398,8 +410,10 @@ appropriate authentication, authorization, and sandbox configuration; see
   sandboxes, skills, and environment variables.
 - [Runtime and integration reference](docs/runtime-reference.md): detailed
   runtime behavior and optional deployment/integration notes.
-- [Enterprise design](docs/enterprise-fit.html): proposed capability registry,
-  Typesense discovery, telecom data catalog, and skill promotion workflow.
+- [Enterprise services](docs/enterprise-services.html): registry, reviewed skill
+  publication, dependency recovery, remote isolation, and setup contracts.
+- [Enterprise design](docs/enterprise-fit.html): broader telecom data catalog
+  and Typesense architecture alongside the implemented enterprise services.
 - [Backend guide](backend/AGENTS.md) and [frontend guide](frontend/AGENTS.md):
   module boundaries, conventions, and commands.
 - [Changelog](CHANGELOG.md): release history.

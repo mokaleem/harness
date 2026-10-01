@@ -474,6 +474,7 @@ class DeerFlowClient:
         skill_setup = build_skill_search_setup(
             skills_list,
             enabled=self._app_config.skills.deferred_discovery,
+            max_results=self._app_config.skills.max_search_results,
             container_base_path=self._app_config.skills.container_path,
             skill_authorization=skill_authorization,
         )
@@ -495,14 +496,14 @@ class DeerFlowClient:
         )
         tools = [tool for tool in authorized_tools if id(tool) in configured_tool_ids]
         late_tools = [tool for tool in authorized_tools if id(tool) not in configured_tool_ids]
-        final_tools, deferred_setup = assemble_deferred_tools(tools, enabled=self._app_config.tool_search.enabled)
+        final_tools, deferred_setup = assemble_deferred_tools(tools, enabled=self._app_config.tool_search.enabled, max_results=min(self._app_config.tool_search.max_search_results, self._app_config.tool_search.max_active_tools))
         final_tools.extend(late_tools)
         mcp_routing_middleware = build_mcp_routing_middleware(
             final_tools,
             deferred_setup,
             top_k=self._app_config.tool_search.auto_promote_top_k,
         )
-        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=deferred_setup.deferred_names)
+        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(authorized_tools, deferred_names=deferred_setup.deferred_names, max_names=self._app_config.tool_search.max_prompt_names)
 
         kwargs: dict[str, Any] = {
             # attach_tracing=False because ``stream()`` injects tracing
@@ -540,7 +541,7 @@ class DeerFlowClient:
                 deferred_names=deferred_setup.deferred_names,
                 mcp_routing_hints_section=mcp_routing_hints_section,
                 user_id=effective_user_id,
-                skill_names=skill_setup.skill_names or None,
+                skill_names=skill_setup.skill_names if self._app_config.skills.deferred_discovery else None,
                 subagent_execution_capacity=subagent_execution_capacity,
                 memory_enabled=memory_enabled,
                 bash_available=has_bash_tool(authorized_tools),

@@ -327,6 +327,9 @@ def describe_middleware(middleware: object) -> MiddlewareDescriptor:
             parameters = {"error": "UnserialisableDeclaration"}
     else:
         parameters = {"probed": True, **_probe_middleware_parameters(described)}
+    execution_contract = _plain_value(getattr(middleware, "execution_contract", None))
+    if isinstance(execution_contract, dict):
+        parameters = {**parameters, "extension_execution": execution_contract}
     return MiddlewareDescriptor(
         name=name,
         module=type(described).__module__,

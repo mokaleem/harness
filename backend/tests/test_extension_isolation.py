@@ -51,6 +51,50 @@ async def _ahandler(request):
     return "core-result"
 
 
+def test_execution_mode_denials_never_fall_through():
+    wrapped = IsolatedMiddleware(_Boom(), "enterprise:install", lambda d: None, execution=True)
+    calls = []
+    with pytest.raises(ValueError, match="observation"):
+        wrapped.wrap_tool_call("request", lambda r: calls.append(r))
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_execution_lifecycle_denial_is_not_skipped():
+    class Deny(AgentMiddleware):
+        async def abefore_agent(self, state, runtime):
+            raise PermissionError("Team access required")
+
+    wrapped = IsolatedMiddleware(Deny(), "enterprise:install", lambda d: None, execution=True)
+    with pytest.raises(PermissionError):
+        await wrapped.abefore_agent({}, None)
+
+
+@pytest.mark.asyncio
+async def test_execution_mode_retries_are_bounded_and_return_partial_results():
+    class Retry(AgentMiddleware):
+        async def awrap_tool_call(self, request, handler):
+            for _ in range(2):
+                try:
+                    return await handler(request)
+                except ConnectionError:
+                    pass
+            return "verified partial result"
+
+    calls = []
+
+    async def unavailable(req):
+        calls.append(req)
+        raise ConnectionError()
+
+    wrapped = IsolatedMiddleware(Retry(), "enterprise:install", lambda d: None, execution=True, max_handler_calls=2)
+    assert await wrapped.awrap_tool_call("request", unavailable) == "verified partial result"
+    assert calls == ["request", "request"]
+    wrapped = IsolatedMiddleware(Retry(), "enterprise:install", lambda d: None, execution=True, max_handler_calls=1)
+    with pytest.raises(RuntimeError, match="budget"):
+        await wrapped.awrap_tool_call("request", unavailable)
+
+
 def test_failing_middleware_falls_through_to_the_handler():
     errors = []
     wrapped = IsolatedMiddleware(_Boom(), "bad:install", errors.append)

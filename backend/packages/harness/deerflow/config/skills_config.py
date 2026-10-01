@@ -22,6 +22,7 @@ class SkillsConfig(BaseModel):
         default="deerflow.skills.storage.local_skill_storage:LocalSkillStorage",
         description="Class path of the SkillStorage implementation.",
     )
+    user_scoped_use: str | None = Field(default=None, description="Optional operator-owned UserScopedSkillStorage subclass; defaults to the standard per-user filesystem implementation")
     path: str | None = Field(
         default=None,
         description=("Path to skills directory. If not specified, defaults to `skills` under the caller project root, falling back to the legacy repo-root location for monorepo compatibility."),
@@ -37,6 +38,8 @@ class SkillsConfig(BaseModel):
         default=False,
         description=("When enabled, skill metadata is not injected into the system prompt. Instead, only skill names appear in <skill_index> and the LLM discovers details on demand via the describe_skill tool."),
     )
+    max_prompt_names: int = Field(default=50, ge=1, le=500, description="Maximum skill names listed in the deferred prompt; the full catalog remains searchable")
+    max_search_results: int = Field(default=5, ge=1, le=20, description="Maximum skill metadata entries returned per discovery call, including exact selection")
 
     def get_skills_path(self) -> Path:
         """

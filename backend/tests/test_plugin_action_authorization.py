@@ -34,6 +34,34 @@ ACTION_URL = f"/api/plugins/{NAMESPACE}/actions/check"
 _DECISIONS: list = []
 
 
+def test_action_receives_only_request_scoped_evidence(plugin_app):
+    from dataclasses import replace
+
+    from deerflow_extension_api.run_evidence import RUN_EVIDENCE_READER_RESOLVER_KEY
+
+    http, calls, _ = plugin_app
+    _use_authorization(enabled=False)
+    source, plugin = http.app.state.extensions.plugins[0]
+    plugin = replace(plugin, backend=(replace(plugin.backend[0], requires_run_evidence=True),))
+    http.app.state.extensions = replace(http.app.state.extensions, plugins=((source, plugin),))
+    scoped_reader = object()
+    setattr(http.app.state, RUN_EVIDENCE_READER_RESOLVER_KEY, lambda request: scoped_reader)
+    assert http.post(ACTION_URL, json={"text": "site health"}).status_code == 200
+    assert calls[0][1].run_evidence_reader is scoped_reader
+
+
+def test_evidence_action_fails_closed_without_reader(plugin_app):
+    from dataclasses import replace
+
+    http, calls, _ = plugin_app
+    _use_authorization(enabled=False)
+    source, plugin = http.app.state.extensions.plugins[0]
+    plugin = replace(plugin, backend=(replace(plugin.backend[0], requires_run_evidence=True),))
+    http.app.state.extensions = replace(http.app.state.extensions, plugins=((source, plugin),))
+    assert http.post(ACTION_URL, json={"text": "site health"}).status_code == 503
+    assert calls == []
+
+
 class _RecordingProvider:
     """Records every decision and refuses the wrong entry points."""
 

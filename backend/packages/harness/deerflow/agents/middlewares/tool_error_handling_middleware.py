@@ -655,7 +655,7 @@ def build_subagent_runtime_middlewares(
     if deferred_setup is not None and deferred_setup.deferred_names:
         from deerflow.agents.middlewares.deferred_tool_filter_middleware import DeferredToolFilterMiddleware
 
-        middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash))
+        middlewares.append(DeferredToolFilterMiddleware(deferred_setup.deferred_names, deferred_setup.catalog_hash, max_active_tools=getattr(app_config.tool_search, "max_active_tools", 20)))
         from deerflow.agents.middlewares.mcp_routing_middleware import assert_mcp_routing_before_deferred_filter
 
         assert_mcp_routing_before_deferred_filter(middlewares)

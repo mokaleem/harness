@@ -11,6 +11,18 @@ from pathlib import Path
 from deerflow_extension_api import AgentAssemblyDescriptor, MiddlewareDescriptor, ToolDescriptor
 
 
+def test_execution_interceptor_contract_changes_middleware_identity():
+    from langchain.agents.middleware import AgentMiddleware
+
+    from deerflow.agents.assembly_descriptor import describe_middleware
+    from deerflow.extensions.isolation import IsolatedMiddleware
+
+    middleware = AgentMiddleware()
+    observer = IsolatedMiddleware(middleware, "enterprise:install", lambda d: None)
+    execution = IsolatedMiddleware(middleware, "enterprise:install", lambda d: None, execution=True, max_handler_calls=2)
+    assert describe_middleware(observer) != describe_middleware(execution)
+
+
 def test_fingerprint_is_stable_for_identical_assemblies():
     def make():
         return AgentAssemblyDescriptor(

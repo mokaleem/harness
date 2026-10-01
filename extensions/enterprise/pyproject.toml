@@ -1,0 +1,26 @@
+[project]
+name = "deerflow-enterprise"
+version = "0.1.0"
+description = "Versioned enterprise capability governance for DeerFlow"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+  "deerflow-extension-api>=0.2.5,<0.3",
+  "deerflow-harness>=2.1,<3",
+  "sqlalchemy>=2,<3", "pydantic>=2,<3", "httpx>=0.28,<1",
+  "fastapi>=0.115,<1", "jsonschema>=4.26,<5", "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3,<4"]
+
+[project.entry-points."deerflow.extensions"]
+enterprise = "deerflow_enterprise:install"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["deerflow_enterprise"]

@@ -1,5 +1,11 @@
 ### Tool System (`packages/harness/deerflow/tools/`)
 
+Python tools with `defer_loading: true` are cloned and tagged with
+`deerflow_deferred`, not `deerflow_mcp`. Deferred assembly includes those tools
+and MCP tools. Standard assembly bounds discovery results including exact
+`select:` requests. Preserve JSON-array responses for `SkillToolPolicyMiddleware`;
+direct builders retain legacy exact selection unless supplied `max_results`.
+
 `task` and `batch_task` opt into JSON checks with `file:<path> json-valid`.
 See [subagents/AGENTS.md](../subagents/AGENTS.md) for read limits and UNVERIFIED semantics.
 

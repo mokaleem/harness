@@ -1,5 +1,20 @@
 ### Configuration System
 
+Bounded discovery (template v52): `skills` and `tool_search` each expose
+`max_prompt_names` (50, 1–500) and `max_search_results` (5, 1–20).
+`tool_search.max_active_tools` (20, 1–100) must cover search results plus
+`auto_promote_top_k`. The template enables both deferred flags; model defaults
+remain false for existing configurations. `tools[].defer_loading` opts a Python
+tool into discovery without assigning MCP provenance. See
+[discovery and clarification](../../../../../docs/discovery-and-clarification.md).
+
+`skills.user_scoped_use` optionally selects an operator-owned
+`UserScopedSkillStorage` subclass through the standard reflection resolver. The
+default remains the existing filesystem implementation. Enterprise projections
+use this to exclude independent personal/legacy writers; the per-user cache
+continues to follow AppConfig identity. Never accept this import path from model
+tool input or request context.
+
 Operator prompt overlays: `lead_prompt_overlay` on AppConfig and
 `subagents.agents.<name>.prompt_overlay` accept literal `prepend`/`append` strings.
 The per-assembly snapshot owns these settings; no run-context override exists.

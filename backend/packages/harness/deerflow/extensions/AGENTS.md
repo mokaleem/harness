@@ -1,5 +1,24 @@
 ### Python Extension System (Runtime and Distribution)
 
+Extension API 0.2.5 adds `BackendAction.requires_run_evidence` and keyword-only
+`ActionContext.run_evidence_reader`. Only opted-in actions resolve the authenticated
+request's reader; unavailable readers return 503 and denied scope returns 403.
+The trusted service's global reader must never substitute for a request reader.
+
+`MiddlewarePlacement(execution=True, max_handler_calls=N)` opts a trusted
+TOOL_RAW contribution into execution semantics: preserve its return, allow at
+most 1–4 downstream calls, and propagate wrap/lifecycle failures. Admission always
+forwards the original request. Default `execution=False` preserves observational
+fail-open/one-call behavior. Declare both sync and async hooks for policies needed
+on both entry points. Assembly identity includes the execution handler budget.
+Placement metadata must travel with each sorted contribution; never reuse the
+last contributor's flags while constructing another wrapper.
+
+The enterprise extension uses this contract for registry admission and bounded
+dependency recovery. Its contributor snapshots during required installation,
+avoiding fail-open omission through construction-time filesystem reads. Per-run
+membership and managed-file verification happen inside execution hooks.
+
 Third-party Python packages can expose an `install(registry, config)` function and be
 loaded, in deterministic order, from the startup-only top-level `plugins:` list in
 `config.yaml`. Keep this list out of `extensions_config.json`: the latter is writable
@@ -195,7 +214,7 @@ duck-types on those attributes rather than importing `extensions/isolation.py`:
 `extensions/` sits below `agents/`, so importing it there would point the
 dependency backwards.
 
-Contributed middlewares are wrapped by `IsolatedMiddleware`: extension failures emit
+Observational contributed middlewares are wrapped by `IsolatedMiddleware`: extension failures emit
 diagnostics and fail open without repeating a downstream model/tool side effect. The
 wrapper mirrors lifecycle hooks, tools, transformers, and state schema implemented by
 the inner middleware. LangChain treats each sync/async model or tool wrapper pair as one

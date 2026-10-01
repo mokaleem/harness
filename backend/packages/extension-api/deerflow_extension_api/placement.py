@@ -68,3 +68,18 @@ class MiddlewarePlacement:
     placement: Placement
     scope: AgentScope = AgentScope.BOTH
     order: int = 0
+    execution: bool = False
+    """Trusted tool interceptor: preserve returns and propagate failures.
+
+    Default contributions remain observational. Execution requires TOOL_RAW;
+    the original admitted request is retained across every downstream call.
+    """
+    max_handler_calls: int = 1
+
+    def __post_init__(self):
+        if type(self.execution) is not bool or type(self.max_handler_calls) is not int or not 1 <= self.max_handler_calls <= 4:
+            raise ValueError("execution must be boolean and max_handler_calls between 1 and 4")
+        if self.execution and self.placement != Placement.TOOL_RAW:
+            raise ValueError("Execution contributions require TOOL_RAW placement")
+        if not self.execution and self.max_handler_calls != 1:
+            raise ValueError("Observational contributions permit one handler call")

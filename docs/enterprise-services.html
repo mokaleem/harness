@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Enterprise capability registry, reviewed skill releases, dependency recovery and remote sandbox integration for DeerFlow.">
+  <title>Enterprise services · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation">
+      <div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div>
+      <div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-fit.html">Enterprise design</a><a href="enterprise-services.html" aria-current="page">Enterprise services</a></div>
+    </nav>
+    <div class="sidebar-meta">Enterprise package 0.1.0<br>Extension API 0.2.5<br>Offline HTML · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1"><article>
+    <header><p class="eyebrow">Governed capabilities · telecom teams</p><h1>Enterprise services around the harness</h1><p>The enterprise package owns capability governance. DeerFlow continues to own the agent loop. Read the <a href="enterprise-services.md">native setup and API contract guide</a> before enabling it.</p></header>
+    <section id="registry"><h2>1. Authoritative capability registry</h2><p>Skills, agents, subagents, Python tools and MCP servers share one versioned registry. Each can be internal or external. Immutable revisions record ownership, exact dependency versions, content digests and activation state.</p><p>One team deployment consumes a generated runtime projection. Multiple teams share the same registry database. SQLite supports local development; PostgreSQL shares state across nodes. Typesense metadata is exported from this registry and remains a replaceable discovery index.</p></section>
+    <section id="workflow"><h2>2. Create a skill</h2><ol><li>Click <strong>Create a skill</strong> after a conversation completes.</li><li>Capture authenticated run references, receipts and content hashes in an expiring draft.</li><li>Write a reusable recipe with parameters, examples, query resources and approved table DDL references.</li><li>Validate parameters and package structure with native SkillScan, then run the deployment's domain validator.</li><li>A different administrator reviews the exact validated digest.</li><li>Publish an immutable version; activate and deploy it separately.</li></ol><p>For a telecom site-health recipe, parameterize the date and site identifier. The validator should check approved identifier mappings, schema freshness, query permissions, dry runs and expected behavior. It should not assume a correct join from matching column names.</p></section>
+    <section id="recovery"><h2>3. Failure handling</h2><p>Explicitly idempotent async calls can retry within attempt and time budgets. Shared circuit state admits one recovery probe after cooldown. Permission and validation failures do not retry. Ambiguous writes are never automatically replayed.</p><p>The model receives a dependency failure receipt and escalation ID, retains earlier verified results, and explains missing evidence. Operators see the escalation queue in Skill releases.</p></section>
+    <section id="isolation"><h2>4. Approved remote execution</h2><p>The remote adapter requires an operator-approved HTTPS broker and an identity-bound policy receipt. The remote service enforces filesystem, network, CPU, memory, disk, command deadline and lease lifetime limits. It supplies read-only skills and bounded file transfer.</p><p>The adapter rejects weakened receipts and path escapes. It provides no local execution fallback. This change supplies the adapter and protocol; it does not provision or certify your company's remote infrastructure.</p></section>
+    <section id="setup"><h2>Native setup and upgrade compatibility</h2><p>Install <a href="../extensions/enterprise/README.md">the enterprise package</a> with DeerFlow's extension manager, configure registry credentials through environment variables, register team memberships and capabilities, then deploy a projection. The <a href="enterprise-services.md">setup guide</a> includes PowerShell and macOS commands, a telecom MCP example, the domain validation contract and the remote broker protocol.</p><p>Extension API 0.2.5 adds narrow evidence and execution contracts. Existing observational extensions retain their defaults. The enterprise package contains no copied agent engine.</p><div class="note"><strong>Integration boundaries</strong>Production BigQuery validation, PostgreSQL contention checks, Typesense indexing and remote broker enforcement require tests against your approved services. The committed tests and browser checks use synthetic data.</div></section>
+  </article></main>
+</body>
+</html>

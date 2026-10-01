@@ -205,6 +205,13 @@ cd frontend && pnpm rstest run <pattern>     # e.g. pnpm rstest run my-component
 
 ## Where to Go Next
 
+- Enterprise services → **[extensions/enterprise/AGENTS.md](extensions/enterprise/AGENTS.md)**.
+  This independent package owns registry versions/activation, team membership,
+  reviewed publication and dependency circuit state. Runtime configurations and
+  Typesense metadata are projections. See **[docs/enterprise-services.md](docs/enterprise-services.md)**
+  for native installation, the one-team-per-projection boundary, validation hooks,
+  and the approved remote broker protocol. Do not copy the engine into this package.
+
 - Offline contribution handbook → **[docs/index.html](docs/index.html)**. Static HTML guides and shared `docs/assets/guide.css` cover internal and external contributions across skills, MCP tools, agents, and subagents, plus Python tools, extensions, runtime capabilities, and proposed enterprise additions. Distinguish contribution ownership from execution location/protocol. Keep configuration examples aligned with implementation schemas; enterprise proposals must remain labeled separately from shipped capabilities. These pages open directly in a browser without a frontend build.
 - Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**
 - Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**

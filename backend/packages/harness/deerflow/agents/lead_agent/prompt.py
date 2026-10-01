@@ -876,6 +876,7 @@ def get_skills_prompt_section(
             skill_names=skill_names,
             container_base_path=container_base_path,
             skill_evolution_section=skill_evolution_section,
+            max_names=getattr(app_config.skills, "max_prompt_names", 50) if app_config else 50,
         )
 
     # ── Legacy full-metadata path — load ALL skills for disabled-skill section
@@ -1109,7 +1110,7 @@ def apply_prompt_template(
     )
 
     # Get deferred tools section (tool_search)
-    deferred_tools_section = get_deferred_tools_prompt_section(deferred_names=deferred_names)
+    deferred_tools_section = get_deferred_tools_prompt_section(deferred_names=deferred_names, max_names=getattr(getattr(app_config, "tool_search", None), "max_prompt_names", 50))
 
     # Build ACP agent section only if ACP agents are configured
     acp_section = _build_acp_section(app_config=app_config, bash_available=bash_available)

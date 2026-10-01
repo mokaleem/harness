@@ -19,9 +19,10 @@ so the wrapper supplies a silent pass-through counterpart when the inner
 implements only one side; otherwise the base class raises
 ``NotImplementedError`` before isolation can fail open.
 
-All first-version contributions are observational, hence fail-open. A future
-intercepting (decision-making) contribution would need to fail closed and must
-opt out of this wrapper explicitly.
+Contributions are observational and fail-open by default. API 0.2.5 adds an
+operator-trusted execution mode at TOOL_RAW: returned decisions and failures
+propagate, and downstream calls retain the admitted request within a bounded
+per-interceptor budget. This mode also propagates lifecycle admission failures.
 """
 
 from __future__ import annotations
@@ -151,14 +152,14 @@ def _wrapper_subclass(hooks: frozenset[str]) -> type[IsolatedMiddleware]:
 
 
 class IsolatedMiddleware(AgentMiddleware):
-    """Wrap one extension middleware so its failures cannot break the run.
+    """Isolate observational middleware; propagate opted-in execution failures.
 
     Instantiation returns a cached subclass that defines exactly the hooks the
     inner middleware implements, so LangChain's class-level capability checks
     see the same interface on the wrapper as on the inner middleware itself.
     """
 
-    def __new__(cls, inner: AgentMiddleware, source: str, on_error: Callable[[Diagnostic], None], *, name: str | None = None):
+    def __new__(cls, inner: AgentMiddleware, source: str, on_error: Callable[[Diagnostic], None], *, name: str | None = None, execution: bool = False, max_handler_calls: int = 1):
         if cls is IsolatedMiddleware:
             cls = _wrapper_subclass(_implemented_hooks(inner))
         return super().__new__(cls)
@@ -170,11 +171,17 @@ class IsolatedMiddleware(AgentMiddleware):
         on_error: Callable[[Diagnostic], None],
         *,
         name: str | None = None,
+        execution: bool = False,
+        max_handler_calls: int = 1,
     ) -> None:
         super().__init__()
         self._inner = inner
         self._source = source
         self._on_error = on_error
+        if type(execution) is not bool or type(max_handler_calls) is not int or not 1 <= max_handler_calls <= 4:
+            raise ValueError("Invalid execution handler budget")
+        self._execution = execution
+        self._max_handler_calls = max_handler_calls
         if name is None:
             inner_name = getattr(inner, "name", type(inner).__name__)
             name = f"extension:{source}:{inner_name}"
@@ -203,6 +210,10 @@ class IsolatedMiddleware(AgentMiddleware):
         """Extension this middleware came from. Read by the provenance map."""
         return self._source
 
+    @property
+    def execution_contract(self) -> dict[str, object] | None:
+        return {"failure_mode": "propagate", "max_handler_calls": self._max_handler_calls} if self._execution else None
+
     def _report(self, hook: str, exc: Exception) -> None:
         message = f"{type(self._inner).__name__}.{hook} failed and was skipped: {exc}"
         logger.exception("Extension %s: %s", self._source, message)
@@ -218,6 +229,17 @@ class IsolatedMiddleware(AgentMiddleware):
         request: Any,
         handler: Callable[[Any], Any],
     ) -> Any:
+        if self._execution:
+            calls = 0
+
+            def admitted_handler(inner_request):
+                nonlocal calls
+                calls += 1
+                if calls > self._max_handler_calls:
+                    raise RuntimeError("Extension downstream handler budget exceeded")
+                return handler(request)
+
+            return inner_hook(request, admitted_handler)
         handler_called = False
         handler_succeeded = False
         handler_result: Any = None
@@ -287,6 +309,17 @@ class IsolatedMiddleware(AgentMiddleware):
         request: Any,
         handler: Callable[[Any], Awaitable[Any]],
     ) -> Any:
+        if self._execution:
+            calls = 0
+
+            async def admitted_handler(inner_request):
+                nonlocal calls
+                calls += 1
+                if calls > self._max_handler_calls:
+                    raise RuntimeError("Extension downstream handler budget exceeded")
+                return await handler(request)
+
+            return await inner_hook(request, admitted_handler)
         handler_called = False
         handler_succeeded = False
         handler_result: Any = None
@@ -346,6 +379,8 @@ class IsolatedMiddleware(AgentMiddleware):
     def _invoke_lifecycle_sync(self, hook: str, state: Any, runtime: Any) -> Any:
         """Lifecycle hooks have no handler to fall through to: the fail-open
         degradation for a failed observation is applying no state update."""
+        if self._execution:
+            return getattr(self._inner, hook)(state, runtime)
         try:
             return getattr(self._inner, hook)(state, runtime)
         except GraphBubbleUp:
@@ -355,6 +390,8 @@ class IsolatedMiddleware(AgentMiddleware):
             return None
 
     async def _invoke_lifecycle_async(self, hook: str, state: Any, runtime: Any) -> Any:
+        if self._execution:
+            return await getattr(self._inner, hook)(state, runtime)
         try:
             return await getattr(self._inner, hook)(state, runtime)
         except GraphBubbleUp:

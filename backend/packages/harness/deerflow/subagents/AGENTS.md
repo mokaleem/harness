@@ -1,5 +1,9 @@
 ### Subagent System (`packages/harness/deerflow/subagents/`)
 
+Native subagents inherit configured deferred catalog-preview, search-result, and
+active-schema limits. Apply their tool/skill allowlists and authorization before
+building catalogs, and retain full permitted catalogs behind bounded previews.
+
 **JSON**: See README. Authorize before local metadata and reads; inaccessible paths stay UNVERIFIED.
 
 Apply each subagent's prompt overlay after assembling its full SystemMessage.

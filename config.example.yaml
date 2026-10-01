@@ -20,7 +20,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 50
+config_version: 52
 
 # Optional operator-owned literal prompt extensions (see CONFIGURATION.md):
 # lead_prompt_overlay:
@@ -1312,11 +1312,18 @@ tools:
 # multiple MCP servers expose a large number of tools.
 
 tool_search:
-  enabled: false
+  enabled: true
   # When tool_search is enabled, PR1 MCP routing metadata can auto-promote
   # matching deferred MCP tool schemas before a model call. This is the maximum
   # number of matched schemas promoted per model call. Valid range: 1..5.
   auto_promote_top_k: 3
+  # Bound catalog previews, search responses (including select:), and schemas
+  # sent per model call. Omitted/older tools remain discoverable via tool_search.
+  max_prompt_names: 50
+  max_search_results: 5
+  # Must cover max_search_results + auto_promote_top_k so routing cannot
+  # immediately evict the tools selected by the last explicit search.
+  max_active_tools: 20
 
 # ============================================================================
 # Tool Output Budget Protection
@@ -2044,12 +2051,15 @@ skills:
   # Default: /mnt/skills
   container_path: /mnt/skills
 
-  # Deferred skill discovery (default: false)
+  # Deferred skill discovery (enabled in this setup template)
   # When enabled, only skill names appear in the system prompt (<skill_index>).
   # The LLM discovers skill details on demand via the describe_skill tool.
   # This keeps the system prompt compact and prefix-cache friendly when many
   # skills are installed.
-  # deferred_discovery: true
+  deferred_discovery: true
+  # Search covers every permitted enabled skill, including omitted names.
+  max_prompt_names: 50
+  max_search_results: 5
 
 # ============================================================================
 # SkillScan Configuration

@@ -148,7 +148,7 @@ def merge_promoted(existing: PromotedTools | None, new: PromotedTools | None) ->
     - new None/empty -> preserve existing (node didn't touch promotions).
     - catalog_hash changed -> replace wholesale, dropping stale names (prevents a
       persisted bare name from exposing a different tool after catalog drift).
-    - same catalog_hash -> union names, dedupe, preserve order.
+    - same catalog_hash -> union names, refreshing newly selected names to the end.
     """
     if not new:
         return existing
@@ -157,9 +157,11 @@ def merge_promoted(existing: PromotedTools | None, new: PromotedTools | None) ->
             "catalog_hash": new["catalog_hash"],
             "names": list(dict.fromkeys(new["names"])),
         }
+    refreshed = list(dict.fromkeys(new["names"]))
+    refreshed_set = set(refreshed)
     return {
         "catalog_hash": existing["catalog_hash"],
-        "names": list(dict.fromkeys(existing["names"] + new["names"])),
+        "names": list(dict.fromkeys(name for name in existing["names"] if name not in refreshed_set)) + refreshed,
     }
 
 

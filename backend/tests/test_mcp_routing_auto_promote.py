@@ -397,7 +397,8 @@ def test_explicit_tool_search_merges_with_auto_promoted_names():
 
     assert result["promoted"] == {
         "catalog_hash": setup.catalog_hash,
-        "names": ["postgres_query", "metrics_query"],
+        # The repeated routing pass refreshes its preferred tool's recency.
+        "names": ["metrics_query", "postgres_query"],
     }
 
 
