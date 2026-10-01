@@ -83,7 +83,7 @@ logging:
 # ============================================================================
 # Optional agent tracing via Monocle. Configured through environment variables
 # (MONOCLE_TRACING, MONOCLE_EXPORTERS, OKAHU_API_KEY — like LangSmith/Langfuse),
-# not config.yaml keys, and OFF by default. See README.md → "Monocle Tracing"
+# not config.yaml keys, and OFF by default. See docs/runtime-reference.md → "Monocle Tracing"
 # for setup, what each exporter captures, and where the trace data goes.
 
 # ============================================================================

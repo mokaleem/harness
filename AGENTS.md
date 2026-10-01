@@ -205,6 +205,7 @@ cd frontend && pnpm rstest run <pattern>     # e.g. pnpm rstest run my-component
 
 ## Where to Go Next
 
+- Offline contribution handbook → **[docs/index.html](docs/index.html)**. Static HTML guides and shared `docs/assets/guide.css` cover internal and external contributions across skills, MCP tools, agents, and subagents, plus Python tools, extensions, runtime capabilities, and proposed enterprise additions. Distinguish contribution ownership from execution location/protocol. Keep configuration examples aligned with implementation schemas; enterprise proposals must remain labeled separately from shipped capabilities. These pages open directly in a browser without a frontend build.
 - Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**
 - Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**
 - Setup & install → **[Install.md](Install.md)**, **[CONTRIBUTING.md](CONTRIBUTING.md)**
@@ -221,6 +222,7 @@ These apply repo-wide; module guides own the module-specific detail.
 - **Documentation update policy** — keep docs in sync with code: update `README.md` for
   user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
   the same change set.
+- **README scope** — keep the root README focused on developer onboarding, with PowerShell/Docker setup first for Windows teams and a separate WSL2 local-development path. Check commands against the launchers and templates. Keep detailed runtime/integration behavior in `docs/runtime-reference.md` and the HTML handbook; omit promotional content from the README.
 - **Test-driven development** — features and bug fixes ship with tests. Backend tests live
   in `backend/tests/` (TDD is mandatory there; see [backend/AGENTS.md](backend/AGENTS.md));
   frontend tests live in `frontend/tests/`.

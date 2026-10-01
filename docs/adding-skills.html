@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Package a repeatable telecom workflow as SKILL.md instructions plus the references, scripts and templates it needs.">
+  <title>Add skills · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation"><div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div><div class="nav-group"><p>Add capabilities</p><a href="adding-skills.html" aria-current="page">Add skills</a><a href="adding-mcp-tools.html">Add MCP tools</a><a href="adding-tools.html">Add Python tools</a><a href="adding-agents.html">Add agents</a><a href="adding-subagents.html">Add subagents</a><a href="adding-extensions.html">Add extensions</a></div><div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-fit.html">Enterprise additions</a></div></nav>
+    <div class="sidebar-meta">Local source baseline<br><code>4c05e88c</code><br>Offline HTML · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="page-header"><p class="eyebrow">Contribution guide</p><h1>Add skills</h1><p class="lede">Package a repeatable telecom workflow as SKILL.md instructions plus the references, scripts and templates it needs.</p><div class="baseline">Application 2.2.0-dev <span aria-hidden="true">/</span> Source-backed guide</div></header>
+    <nav class="toc" aria-label="On this page"><span>On this page</span><a href="#layout">1. Author an internal skill package</a><a href="#install">2. Install with the correct ownership</a><a href="#external">3. Import an external skill</a><a href="#activate">4. Enable, select and activate</a><a href="#verify">5. Verify the workflow</a><a href="#sources">Source references</a></nav>
+    <article><section id="layout"><h2>1. Author an internal skill package</h2><p>Start with a narrowly defined outcome: investigate a site’s performance using approved metrics and joins. Keep the description specific enough for discovery. The supported package has a root <code>SKILL.md</code> saved as UTF-8.</p><div class="code-label">Package layout</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="Package layout">site-performance-review/
+├── SKILL.md
+├── references/
+│   └── approved-metrics.md
+├── scripts/
+│   └── summarize_results.py
+└── templates/
+    └── report.md</code></pre><div class="code-label">SKILL.md · illustrative workflow</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="SKILL.md · illustrative workflow">---
+name: site-performance-review
+description: Investigate site_id and gnodeb_id performance for a requested time window using approved telecom metrics and joins.
+license: Proprietary
+---
+
+# Site performance review
+
+1. Resolve the requested site and time window. State the timezone.
+2. Read references/approved-metrics.md before selecting metrics.
+3. Use the configured data tools to obtain the approved schema and join definitions.
+4. Query aggregate performance with explicit time and site filters.
+5. Check missing intervals, duplicate join keys and result grain.
+6. Report the metric definition, data freshness, query evidence and limitations.
+7. Save the report to /mnt/user-data/outputs/ and present the artifact.
+
+Do not invent a relationship between site_id, fuze_site_id and gnodeb_id.
+Request a validated mapping when the catalog does not define one.</code></pre><p>A skill does not install an MCP server or make a database connection merely by mentioning one. Provision required tools and sandbox dependencies separately. Supporting scripts must be available in the sandbox and have their Python/system dependencies installed there.</p><p>Optional frontmatter includes <code>allowed-tools</code>, <code>required-secrets</code>, <code>secrets-autonomous</code>, <code>compatibility</code> and descriptive metadata. Use actual runtime tool names when specifying <code>allowed-tools</code>; this narrows an activated workflow and does not grant access to otherwise denied tools.</p></section>
+     <section id="install"><h2>2. Install with the correct ownership</h2><div class="table-wrap" tabindex="0" role="region" aria-label="Reference table"><table><thead><tr><th scope="col">Scope</th><th scope="col">Installation route</th><th scope="col">Behavior</th></tr></thead><tbody><tr><td>One user</td><td>Upload an archive through the skill installer or use the embedded client</td><td>Custom skill content and enabled state are user-scoped. Gateway installation requires administrator access.</td></tr><tr><td>Deployment public bundle</td><td>Operator places a reviewed package beneath the configured <code>skills/public/</code> root</td><td>Global, read-only through user editing surfaces; include it in the deployed image or volume.</td></tr><tr><td>Managed integration</td><td>Use the capability/integration installation flow for that provider</td><td>Managed pack under runtime integrations; credentials and enabled integration state remain per user.</td></tr><tr><td>Legacy shared custom directory</td><td><code>skills/custom/</code> at the global root</td><td>Read-only fallback for users without their own custom skill directory; do not treat this as the current team publication API.</td></tr></tbody></table></div><p>The runtime home defaults to <code>.deer-flow</code> under the project root unless <code>DEER_FLOW_HOME</code> overrides it. User custom packages live under <code>{runtime_home}/users/{user_id}/skills/custom/</code>. Public skills come from the configured host skill root. Let the installer own user paths rather than guessing identity values.</p><p>Build a <code>.skill</code> file as a ZIP archive. This command runs from the parent of the package folder:</p><div class="code-label">Python · archive creation</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="Python · archive creation">from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
+
+package = Path(&quot;site-performance-review&quot;)
+with ZipFile(&quot;site-performance-review.skill&quot;, &quot;w&quot;, ZIP_DEFLATED) as archive:
+    for file in sorted(package.rglob(&quot;*&quot;)):
+        if file.is_file():
+            archive.write(file, file.relative_to(package.parent).as_posix())</code></pre><p>Use the Skills settings upload control, or send authenticated multipart <code>POST /api/skills/install/upload</code> with file field <code>archive</code>. The filename must end in <code>.skill</code>. A skill produced in an existing thread can instead use <code>POST /api/skills/install</code>:</p><div class="code-label">JSON · thread archive installation body</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="JSON · thread archive installation body">{&quot;thread_id&quot;: &quot;your-thread-id&quot;, &quot;path&quot;: &quot;/mnt/user-data/outputs/site-performance-review.skill&quot;}</code></pre></section><section id="external"><h2>3. Import an external skill</h2><ol><li>Obtain a reviewed release or pinned repository revision from its owner. The skill installer does not accept an arbitrary GitHub URL as its request body.</li><li>Find the actual skill root, including <code>SKILL.md</code> and required supporting files. Check the license and replace vendor-specific tools, URLs or path assumptions.</li><li>Package that directory as a <code>.skill</code> archive and use the same installation flow above. Imported third-party skills normally become the caller’s custom skills; source origin does not make them managed integration packs.</li><li>Provide dependencies and credentials through the supported execution environment. Keep secrets out of skill text and archives.</li><li>Use the read-only skill reviewer to inspect quality and resource references. Installation/evolution scanning is separate from this quality review; neither proves the workflow is correct.</li></ol></section>
+     <section id="activate"><h2>4. Enable, select and activate</h2><p>Inspect <code>GET /api/skills</code>. Administrators can toggle with <code>PUT /api/skills/site-performance-review</code> and <code>{"enabled": true}</code>. Public state is global; custom state is per user. Select the skill in the custom agent’s <code>skills</code> list, then explicitly request <code>/site-performance-review</code> in a test conversation.</p><div class="code-label">YAML · optional metadata discovery</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="YAML · optional metadata discovery"># Merge into the root config.yaml.
+skills:
+  container_path: /mnt/skills
+  deferred_discovery: true</code></pre><p>Deferred discovery exposes names first and details through <code>describe_skill</code>. It is separate from <code>tool_search.enabled</code>. Discovery does not activate a skill’s tool policy. Explicit activation or loading its file establishes active context.</p><p>After operator file edits, <code>POST /api/skills/reload</code> invalidates the current Gateway process’s caches. It is not a fleet-wide reload. The next run must see the refreshed skill projection; follow your deployment rollout procedure across workers.</p></section>
+     <section id="verify"><h2>5. Verify the workflow</h2><ol><li>Confirm the package appears for the intended user and is absent from unrelated users’ custom catalogs.</li><li>Check a normal site, an unknown site, an empty result window and an ambiguous site-to-RAN mapping.</li><li>Verify tool availability, approved joins, query/result evidence and artifact delivery.</li><li>Confirm scripts run inside the selected sandbox and no secret is embedded in the exported package.</li></ol><details><summary>Optional: agent-created skills</summary><div class="code-label">YAML · opt-in</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="YAML · opt-in">skill_evolution:
+  enabled: true
+  security_fail_closed: true</code></pre><p>This exposes <code>skill_manage</code> for user custom creation/editing with scanning and history. It does not provide enterprise-wide review or publication. See <a href="enterprise-fit.html#promotion">the bundle-promotion design</a>.</p></details></section><section id="sources" class="sources"><h2>Source references</h2><p>These local files are the implementation reference for this checkout. Your browser may display or download source files.</p><ul><li><a href="../backend/packages/harness/deerflow/skills/frontmatter.py">Frontmatter and parser</a> <span class="source-path">backend/packages/harness/deerflow/skills/frontmatter.py</span></li><li><a href="../backend/packages/harness/deerflow/skills/storage/user_scoped_skill_storage.py">User skill storage</a> <span class="source-path">backend/packages/harness/deerflow/skills/storage/user_scoped_skill_storage.py</span></li><li><a href="../backend/app/gateway/routers/skills.py">Archive installation API</a> <span class="source-path">backend/app/gateway/routers/skills.py</span></li><li><a href="../backend/packages/harness/deerflow/skills/installer.py">Archive installer</a> <span class="source-path">backend/packages/harness/deerflow/skills/installer.py</span></li><li><a href="../backend/packages/harness/deerflow/tools/skill_manage_tool.py">Evolution tool</a> <span class="source-path">backend/packages/harness/deerflow/tools/skill_manage_tool.py</span></li></ul></section></article>
+    <footer><p><a href="index.html">Handbook home</a> · <a href="capabilities.html">Capability inventory</a> · <a href="LICENSE">MIT License</a> · <a href="#main">Back to top</a></p><p>Examples use placeholder infrastructure. Verify current contracts before deploying.</p></footer>
+  </main>
+</body>
+</html>

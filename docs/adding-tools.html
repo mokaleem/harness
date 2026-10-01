@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Expose an importable Python tool when the operation belongs in the Gateway runtime. Use MCP when it should remain a separate service.">
+  <title>Add Python tools · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation"><div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div><div class="nav-group"><p>Add capabilities</p><a href="adding-skills.html">Add skills</a><a href="adding-mcp-tools.html">Add MCP tools</a><a href="adding-tools.html" aria-current="page">Add Python tools</a><a href="adding-agents.html">Add agents</a><a href="adding-subagents.html">Add subagents</a><a href="adding-extensions.html">Add extensions</a></div><div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-fit.html">Enterprise additions</a></div></nav>
+    <div class="sidebar-meta">Local source baseline<br><code>4c05e88c</code><br>Offline HTML · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="page-header"><p class="eyebrow">Contribution guide</p><h1>Add Python tools</h1><p class="lede">Expose an importable Python tool when the operation belongs in the Gateway runtime. Use MCP when it should remain a separate service.</p><div class="baseline">Application 2.2.0-dev <span aria-hidden="true">/</span> Source-backed guide</div></header>
+    <nav class="toc" aria-label="On this page"><span>On this page</span><a href="#internal">1. Package an internal tool</a><a href="#configure">2. Install and configure</a><a href="#external">3. Add external tools</a><a href="#contracts">4. Design a useful data tool contract</a><a href="#verify">5. Verify</a><a href="#sources">Source references</a></nav>
+    <article><section id="internal"><h2>1. Package an internal tool</h2><p>Put team-owned implementations in a separately versioned package. A LangChain tool supplies its own name, description and parameter schema. This pure-function example has no database access or credentials:</p><div class="code-label">telecom_tools/catalog.py · illustrative convention</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="telecom_tools/catalog.py · illustrative convention">from langchain.tools import tool
+
+@tool
+def normalize_site_id(site_id: str) -&gt; str:
+    &quot;&quot;&quot;Normalize our demo site identifiers by trimming space and uppercasing.&quot;&quot;&quot;
+    normalized = site_id.strip().upper()
+    if not normalized:
+        raise ValueError(&quot;site_id must not be empty&quot;)
+    return normalized</code></pre><p>Declare LangChain and every dependency you import in the package metadata. Test the operation directly, including invalid inputs. This normalization rule is an example, not a universal telecom identifier definition.</p></section>
+     <section id="configure"><h2>2. Install and configure</h2><p>Install the reviewed package into the backend environment and lock its version. For a local package, an operator can run <code>uv add /absolute/path/to/telecom-tools</code> from <code>backend/</code>. Production images must include the same dependency. Add both a group and a tool entry to the root configuration:</p><div class="code-label">YAML · config.yaml fragment</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="YAML · config.yaml fragment"># Append to existing lists; preserve the built-in tools and groups.
+tool_groups:
+  - name: telecom
+
+tools:
+  - name: normalize_site_id
+    group: telecom
+    use: telecom_tools.catalog:normalize_site_id</code></pre><p>Unlike some older documentation snippets, the current <code>ToolConfig</code> requires <code>name</code>, <code>group</code> and <code>use</code>. The imported object should have the same tool name. Arbitrary extra configuration keys do not automatically become arguments to your function; follow an established provider pattern if the tool needs configured clients.</p><p>Set a custom agent’s <code>tool_groups</code> to include <code>telecom</code>. Restart after installing/changing Python code, then test a new run. Config edits do not install packages or reload imported module code.</p></section>
+     <section id="external"><h2>3. Add external tools</h2><p>For an external Python package, use exactly the same dependency and class-path approach after reviewing and pinning it. For a vendor’s remote API, prefer an authenticated MCP service when you want independent deployment and a cleaner service boundary.</p><p>The checkout also contains community integrations for search, fetching, knowledge retrieval and other services. Select the provider’s existing <code>use</code> path and declared optional dependencies from <code>config.example.yaml</code>. Some providers require API keys; none become usable solely because their module exists.</p></section>
+     <section id="contracts"><h2>4. Design a useful data tool contract</h2><ol><li>Use explicit parameters such as approved metric ID, site IDs, time bounds and result limit.</li><li>Enforce data permissions inside the execution service using trusted identity. An agent’s group selection is not a database access grant.</li><li>Return the result grain, source tables, schema/metric revisions, query/job ID, row count and freshness alongside the result.</li><li>Keep credentials and unrestricted administrative operations out of the model-visible schema and outputs.</li><li>Use async I/O for network services and cancellation-aware timeouts. Package side effects with idempotency where supported.</li></ol></section>
+     <section id="verify"><h2>5. Verify</h2><p>For the demo tool, ask “Normalize site identifier <code>  dal-104  </code>.” Confirm <code>DAL-104</code>, then test an empty identifier. Confirm a custom agent without the <code>telecom</code> group cannot select this configured tool. For real data tools, validate result contracts and resource policy with authorized and unauthorized users.</p></section><section id="sources" class="sources"><h2>Source references</h2><p>These local files are the implementation reference for this checkout. Your browser may display or download source files.</p><ul><li><a href="../backend/packages/harness/deerflow/config/tool_config.py">Tool configuration fields</a> <span class="source-path">backend/packages/harness/deerflow/config/tool_config.py</span></li><li><a href="../backend/packages/harness/deerflow/tools/tools.py">Tool loading and selection</a> <span class="source-path">backend/packages/harness/deerflow/tools/tools.py</span></li><li><a href="../config.example.yaml">Configured provider examples</a> <span class="source-path">config.example.yaml</span></li><li><a href="../backend/packages/harness/deerflow/authz/tool_filter.py">Assembly authorization</a> <span class="source-path">backend/packages/harness/deerflow/authz/tool_filter.py</span></li></ul></section></article>
+    <footer><p><a href="index.html">Handbook home</a> · <a href="capabilities.html">Capability inventory</a> · <a href="LICENSE">MIT License</a> · <a href="#main">Back to top</a></p><p>Examples use placeholder infrastructure. Verify current contracts before deploying.</p></footer>
+  </main>
+</body>
+</html>

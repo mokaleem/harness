@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Use the public extension contract for host behavior, services, evidence capture and optional UI contributions.">
+  <title>Add extensions · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation"><div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div><div class="nav-group"><p>Add capabilities</p><a href="adding-skills.html">Add skills</a><a href="adding-mcp-tools.html">Add MCP tools</a><a href="adding-tools.html">Add Python tools</a><a href="adding-agents.html">Add agents</a><a href="adding-subagents.html">Add subagents</a><a href="adding-extensions.html" aria-current="page">Add extensions</a></div><div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-fit.html">Enterprise additions</a></div></nav>
+    <div class="sidebar-meta">Local source baseline<br><code>4c05e88c</code><br>Offline HTML · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="page-header"><p class="eyebrow">Contribution guide</p><h1>Add extensions</h1><p class="lede">Use the public extension contract for host behavior, services, evidence capture and optional UI contributions.</p><div class="baseline">Application 2.2.0-dev <span aria-hidden="true">/</span> Source-backed guide</div></header>
+    <nav class="toc" aria-label="On this page"><span>On this page</span><a href="#choose">1. Use an extension when a skill or MCP is insufficient</a><a href="#package">2. Package against the public API</a><a href="#install">3. Install internal or external packages</a><a href="#contracts">4. Reuse the supported contribution kinds</a><a href="#verify">5. Verify and upgrade</a><a href="#sources">Source references</a></nav>
+    <article><section id="choose"><h2>1. Use an extension when a skill or MCP is insufficient</h2><p>An extension can contribute middleware, lifecycle observers, assembly/compaction/system-model observers, services, HTTP routers and full-stack plugin contributions. It is operator-installed Python code with Gateway privileges. Internal and external extensions use the same contract and trust boundary.</p><p>For enterprise bundle capture, start with run evidence plus explicit tool receipts; for a promotion button, examine conversation actions in the full-stack plugin contract.</p></section>
+     <section id="package"><h2>2. Package against the public API</h2><p>Keep the extension in a separate repository/package. Use <code>deerflow_extension_api</code> and declare every framework you import. The bundled example is a working template:</p><div class="code-label">TOML · package fragment, add build metadata</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="TOML · package fragment, add build metadata"># pyproject.toml fragment for a separately maintained extension
+[project]
+name = &quot;deerflow-extension-telecom&quot;
+version = &quot;0.1.0&quot;
+requires-python = &quot;&gt;=3.12&quot;
+dependencies = [&quot;deerflow-extension-api&gt;=0.2.4,&lt;0.3&quot;]
+
+[project.entry-points.&quot;deerflow.extensions&quot;]
+telecom = &quot;deerflow_extension_telecom:install&quot;</code></pre><p>Your package must provide the declared <code>install(registry, config)</code> callable with the <code>@extension(api=..., name=...)</code> marker. Registration happens at startup; services and contributors have their own runtime lifecycle. Follow the complete local example for a working contributor instead of inventing a host import.</p><p>The extension API is <code>0.2.4</code>. Pre-1.0 minor releases may break. Declare the minimum API required by your implementation and qualify upgrades. Direct imports from <code>deerflow.*</code>/<code>app.*</code> are host-internal coupling; avoid them for independently shipped extensions.</p></section>
+     <section id="install"><h2>3. Install internal or external packages</h2><p>Use the root extension manager with a trusted local package or supported pinned package source:</p><div class="code-label">Shell · bundled example and lifecycle</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="Shell · bundled example and lifecycle">make extension-install SOURCE=./examples/deerflow-extension-example
+make extension-list
+make extension-disable NAME=example
+make extension-enable NAME=example</code></pre><p>For your team’s package, replace <code>SOURCE</code> with its reviewed source. The manager updates dependencies, snapshots supported local sources and writes the operator-controlled <code>plugins</code> record in <code>config.yaml</code>. Do not add Python imports to API-writable <code>extensions_config.json</code>.</p><div class="code-label">YAML · representative generated record</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="YAML · representative generated record">plugins:
+  - name: telecom
+    package: deerflow-extension-telecom
+    use: deerflow_extension_telecom:install
+    enabled: true
+    required: false
+    config:
+      environment: development</code></pre><p>Restart the Gateway after every install/upgrade/enable/disable/remove. Rebuild production images when the installed set changes. <code>required: true</code> makes a load failure abort startup; use that only for contributions that must be present for your deployment.</p></section>
+     <section id="contracts"><h2>4. Reuse the supported contribution kinds</h2><div class="table-wrap" tabindex="0" role="region" aria-label="Reference table"><table><thead><tr><th scope="col">Contribution</th><th scope="col">Example enterprise use</th></tr></thead><tbody><tr><td>Middleware</td><td>Attach query receipts or apply an additional approved execution policy.</td></tr><tr><td>Task lifecycle / agent assembly observers</td><td>Record run outcomes, effective capabilities and policy versions.</td></tr><tr><td>System model / compaction observers</td><td>Observe model operations and context lifecycle.</td></tr><tr><td>Service and HTTP router</td><td>Run indexing/evidence workers and expose draft-bundle APIs.</td></tr><tr><td>RunEvidenceReader</td><td>Read scoped run status/events without reaching into internal SQL tables.</td></tr><tr><td>Full-stack plugin</td><td>Add a conversation action or workspace page, subject to its experimental contract.</td></tr></tbody></table></div><p>Evidence pagination needs idempotent consumers; the changed-run interface has no deletion tombstones. If you own extension database tables, follow the separate migration ownership/table-prefix rules. Frontend extension modules are trusted code, not a JavaScript security sandbox.</p></section>
+     <section id="verify"><h2>5. Verify and upgrade</h2><ol><li>Test registration/contributors against stand-in contracts in the extension repository.</li><li>Verify startup diagnostics and test both lead and subagent paths when contributing middleware to both scopes.</li><li>Check request-bound principal/evidence access with different users.</li><li>Rehearse disabled and failed startup behavior, service cleanup and a pinned upgrade.</li><li>Keep adapter/extension compatibility tests independent from your enterprise business logic.</li></ol></section><section id="sources" class="sources"><h2>Source references</h2><p>These local files are the implementation reference for this checkout. Your browser may display or download source files.</p><ul><li><a href="../examples/deerflow-extension-example/README.md">Complete extension example</a> <span class="source-path">examples/deerflow-extension-example/README.md</span></li><li><a href="../backend/packages/extension-api/deerflow_extension_api/__init__.py">Public API</a> <span class="source-path">backend/packages/extension-api/deerflow_extension_api/__init__.py</span></li><li><a href="../frontend/src/content/en/harness/extensions/operations.mdx">Installation and source forms</a> <span class="source-path">frontend/src/content/en/harness/extensions/operations.mdx</span></li><li><a href="../backend/packages/extension-api/deerflow_extension_api/run_evidence.py">Run evidence contract</a> <span class="source-path">backend/packages/extension-api/deerflow_extension_api/run_evidence.py</span></li><li><a href="../docs/full-stack-plugins.md">Full-stack plugin contract</a> <span class="source-path">docs/full-stack-plugins.md</span></li></ul></section></article>
+    <footer><p><a href="index.html">Handbook home</a> · <a href="capabilities.html">Capability inventory</a> · <a href="LICENSE">MIT License</a> · <a href="#main">Back to top</a></p><p>Examples use placeholder infrastructure. Verify current contracts before deploying.</p></footer>
+  </main>
+</body>
+</html>

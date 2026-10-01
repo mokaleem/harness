@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Add internally owned and externally supplied MCP tools, whether their server is a local process or a remote service.">
+  <title>Add MCP tools · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation"><div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div><div class="nav-group"><p>Add capabilities</p><a href="adding-skills.html">Add skills</a><a href="adding-mcp-tools.html" aria-current="page">Add MCP tools</a><a href="adding-tools.html">Add Python tools</a><a href="adding-agents.html">Add agents</a><a href="adding-subagents.html">Add subagents</a><a href="adding-extensions.html">Add extensions</a></div><div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-fit.html">Enterprise additions</a></div></nav>
+    <div class="sidebar-meta">Local source baseline<br><code>4c05e88c</code><br>Offline HTML · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="page-header"><p class="eyebrow">Contribution guide</p><h1>Add MCP tools</h1><p class="lede">Add internally owned and externally supplied MCP tools, whether their server is a local process or a remote service.</p><div class="baseline">Application 2.2.0-dev <span aria-hidden="true">/</span> Source-backed guide</div></header>
+    <nav class="toc" aria-label="On this page"><span>On this page</span><a href="#origins">Internal and external MCP tools</a><a href="#server">1. Build an internal MCP server</a><a href="#connect">2. Register the server</a><a href="#external">3. Add external MCP tools</a><a href="#discover">4. Control tool discovery and selection</a><a href="#verify">5. Verify and reload</a><a href="#sources">Source references</a></nav>
+    <article><section id="origins"><h2>Internal and external MCP tools</h2><div class="table-wrap" tabindex="0" role="region" aria-label="Reference table"><table><thead><tr><th scope="col">Origin</th><th scope="col">Telecom example</th><th scope="col">Connection mechanism</th></tr></thead><tbody><tr><td>Internal</td><td>Your company’s approved BigQuery query/catalog MCP</td><td>Corporate HTTP/SSE endpoint or reviewed stdio executable.</td></tr><tr><td>External</td><td>Vendor RAN diagnosis MCP or an open-source MCP package</td><td>Vendor HTTP/SSE endpoint or reviewed stdio executable.</td></tr></tbody></table></div><p>Choose origin and transport separately. Remote does not mean external: an internal service can be hosted elsewhere in your enterprise. Shared versus personal installation determines configuration/credential ownership, not the origin of its tools.</p></section>
+     <section id="server"><h2>1. Build an internal MCP server</h2><p>Create a separately owned service/environment. This small stdio fixture proves connectivity; it returns demo metadata and does not query BigQuery.</p><div class="code-label">server.py · connectivity fixture</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="server.py · connectivity fixture">from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP(&quot;telecom-catalog&quot;)
+
+@mcp.tool()
+def get_site_metadata(site_id: str) -&gt; dict:
+    &quot;&quot;&quot;Return demo catalog metadata for a site_id; not production data.&quot;&quot;&quot;
+    return {&quot;site_id&quot;: site_id, &quot;source&quot;: &quot;demo-fixture&quot;, &quot;technology&quot;: &quot;5G&quot;}
+
+if __name__ == &quot;__main__&quot;:
+    mcp.run(transport=&quot;stdio&quot;)</code></pre><p>Install <code>mcp</code> in that service’s own locked Python environment. For a stdio server, stdout is protocol traffic: write application logs to stderr. A production query server should validate identity, resource permissions, SQL/query bounds and cancellation, and return table/query/schema evidence.</p></section>
+     <section id="connect"><h2>2. Register the server</h2><p>Merge the server under root <code>extensions_config.json → mcpServers</code>. For a local process, use the absolute executable and script paths visible to the Gateway:</p><div class="code-label">JSON · shared stdio MCP entry</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="JSON · shared stdio MCP entry">{
+  &quot;mcpServers&quot;: {
+    &quot;telecom-catalog&quot;: {
+      &quot;enabled&quot;: true,
+      &quot;type&quot;: &quot;stdio&quot;,
+      &quot;command&quot;: &quot;/opt/telecom-mcp/.venv/bin/python&quot;,
+      &quot;args&quot;: [&quot;/opt/telecom-mcp/server.py&quot;],
+      &quot;tool_name_prefix&quot;: true,
+      &quot;session_init_timeout&quot;: 60,
+      &quot;tool_call_timeout&quot;: 60,
+      &quot;description&quot;: &quot;Internal telecom site catalog&quot;
+    }
+  }
+}</code></pre><p>On native Windows, use your service’s <code>.venv/Scripts/python.exe</code> and an absolute script path. In Docker, those paths and the executable must exist inside the Gateway container. A stdio process is not automatically executed in DeerFlow’s sandbox.</p><p>An internal HTTP service uses the same transport mechanism as an external one:</p><div class="code-label">JSON · replace the illustrative endpoint</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="JSON · replace the illustrative endpoint">{
+  &quot;mcpServers&quot;: {
+    &quot;telecom-data&quot;: {
+      &quot;enabled&quot;: true,
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;https://telecom-data.example/mcp&quot;,
+      &quot;headers&quot;: {&quot;Authorization&quot;: &quot;$TELECOM_MCP_AUTH_HEADER&quot;},
+      &quot;description&quot;: &quot;Approved site, RAN and performance queries&quot;,
+      &quot;routing&quot;: {
+        &quot;mode&quot;: &quot;prefer&quot;,
+        &quot;priority&quot;: 80,
+        &quot;keywords&quot;: [&quot;site_id&quot;, &quot;gnodeb_id&quot;, &quot;performance&quot;, &quot;BigQuery&quot;]
+      }
+    }
+  }
+}</code></pre><p>The environment variable should hold the complete header value, including any required <code>Bearer </code> prefix. <code>$VAR</code> references resolve from the Gateway environment. A URL must be reachable from that runtime; container <code>localhost</code> refers to the container itself. HTTP/SSE ordinary calls use transport-level timeouts; <code>tool_call_timeout</code> explicitly bounds stdio calls and durable-task calls.</p></section>
+     <section id="external"><h2>3. Add external MCP tools</h2><ol><li>Obtain its actual MCP endpoint or reviewed command/package release. Pin subprocess package versions instead of using a moving latest version.</li><li>Register its <code>http</code>, <code>sse</code> or <code>stdio</code> entry with the provider’s supported authentication.</li><li>For user-owned connections, use the Personal MCP settings/API rather than putting every user’s secrets in shared config. The personal configuration API is rooted at <code>/api/mcp/personal/config</code>.</li><li>Inspect the discovered tools and account access before exposing the connection to an agent. A remote provider’s capability description is not an authorization policy.</li></ol><div class="code-label">JSON · external provider, replace the illustrative endpoint</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="JSON · external provider, replace the illustrative endpoint">{
+  &quot;mcpServers&quot;: {
+    &quot;vendor-ran-analyzer&quot;: {
+      &quot;enabled&quot;: true,
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;https://ran-vendor.example/mcp&quot;,
+      &quot;headers&quot;: {&quot;Authorization&quot;: &quot;$VENDOR_RAN_AUTH_HEADER&quot;},
+      &quot;tool_name_prefix&quot;: true,
+      &quot;description&quot;: &quot;Vendor-provided RAN analysis tools&quot;
+    }
+  }
+}</code></pre><p>Merge this entry alongside your internal servers. Replace the placeholder with the vendor’s supported endpoint and configure the complete authorization header in the Gateway environment. For an externally supplied stdio package, use the internal stdio entry’s shape with the reviewed vendor executable and arguments.</p><p>Shared entries can use <code>user_auth</code> for user-mapped headers, or <code>headers_from_context</code> for supported request credentials. Follow the local MCP guide for these exact carriers; do not assume a browser-supplied identity becomes trusted.</p></section>
+     <section id="discover"><h2>4. Control tool discovery and selection</h2><div class="code-label">YAML · config.yaml</div><pre tabindex="0" role="region" aria-label="Code example"><code data-language="YAML · config.yaml">tool_search:
+  enabled: true
+  auto_promote_top_k: 3</code></pre><p>With deferred discovery, full MCP schemas become visible after search or routing promotion. Routing keywords are soft hints. Agent <code>mcp_plugins</code> selects stable installation IDs; obtain the actual IDs from the installed catalog rather than guessing them from display names. Authorization still determines execution access.</p><p>Prefixes avoid collisions. For the stdio fixture, expect a name like <code>telecom-catalog_get_site_metadata</code>; verify the actual exposed name before using it in a skill/subagent allowlist.</p></section>
+     <section id="verify"><h2>5. Verify and reload</h2><ol><li>Inspect the MCP configuration in Settings or <code>GET /api/mcp/config</code>.</li><li>Run a prompt that asks for demo site metadata and confirm the exact tool name, arguments and fixture source.</li><li>Test an unavailable endpoint and invalid credentials; errors should be bounded and intelligible.</li><li>Check that user-scoped connections and sessions do not cross account boundaries.</li><li>Changing enabled MCP configuration refreshes the relevant cache on subsequent assembly. <code>POST /api/mcp/cache/reset</code> explicitly retires cached tools and pooled sessions. Installing executables or changing deployment environments may still require rebuild/restart.</li></ol><details><summary>Long-running reports</summary><p>For services exposing submit/status/cancel tools, configure <code>task_toolsets</code> and enable the durable MCP task runtime with its repository. This is a separate workflow from an ordinary tool call; see the example configuration and <a href="capabilities-runtime.html#durability">durability guide</a>.</p></details></section><section id="sources" class="sources"><h2>Source references</h2><p>These local files are the implementation reference for this checkout. Your browser may display or download source files.</p><ul><li><a href="../backend/packages/harness/deerflow/config/extensions_config.py">MCP configuration schema</a> <span class="source-path">backend/packages/harness/deerflow/config/extensions_config.py</span></li><li><a href="../backend/packages/harness/deerflow/mcp/tools.py">MCP transport and tool adaptation</a> <span class="source-path">backend/packages/harness/deerflow/mcp/tools.py</span></li><li><a href="../backend/app/gateway/routers/personal_mcp.py">Personal MCP API</a> <span class="source-path">backend/app/gateway/routers/personal_mcp.py</span></li><li><a href="../frontend/src/content/en/harness/mcp.mdx">MCP documentation and credential carriers</a> <span class="source-path">frontend/src/content/en/harness/mcp.mdx</span></li><li><a href="../backend/tests/test_mcp_cwd.py">Working FastMCP fixture</a> <span class="source-path">backend/tests/test_mcp_cwd.py</span></li><li><a href="../extensions_config.example.json">Example configuration</a> <span class="source-path">extensions_config.example.json</span></li></ul></section></article>
+    <footer><p><a href="index.html">Handbook home</a> · <a href="capabilities.html">Capability inventory</a> · <a href="LICENSE">MIT License</a> · <a href="#main">Back to top</a></p><p>Examples use placeholder infrastructure. Verify current contracts before deploying.</p></footer>
+  </main>
+</body>
+</html>
