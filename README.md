@@ -404,6 +404,9 @@ appropriate authentication, authorization, and sandbox configuration; see
 
 ## Documentation
 
+- [Detailed enterprise flow diagrams](docs/enterprise-flow.html): offline SVGs
+  with zoom controls and [editable Mermaid source](docs/enterprise-flow.md).
+
 - [Offline extension handbook](docs/index.html): adding internal and external
   skills, MCP tools, agents, subagents, Python tools, and extensions.
 - [Configuration guide](backend/docs/CONFIGURATION.md): providers, tools,

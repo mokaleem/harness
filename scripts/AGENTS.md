@@ -1,5 +1,11 @@
 ## Service Startup Contracts
 
+Documentation-only diagrams are rendered by `render_enterprise_flow.mjs` from
+`docs/enterprise-flow.md` into `docs/assets/enterprise-flow/*.svg`. Renderer
+dependencies live outside application dependencies; see the script header for
+native PowerShell/macOS regeneration commands. The viewer works offline and
+does not load Mermaid from a CDN. Do not hand-edit generated SVG labels.
+
 Optional browser dependency detection reads the top-level `tools:` sequence
 without requiring `name` to be its first mapping key. Both indented and
 indentless lists are supported; nested option names and block-scalar text

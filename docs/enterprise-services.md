@@ -1,10 +1,15 @@
 # Enterprise capability services
 
+See the [detailed flow diagrams](enterprise-flow.html) for registry deployment,
+prompt execution, skill publication, dependency recovery, and remote sandboxes.
+Their [editable Mermaid source](enterprise-flow.md) includes implementation links.
+
 The installable package in [`extensions/enterprise`](../extensions/enterprise/)
 adds four enterprise features around DeerFlow's existing runtime. It does not
 replace the agent engine. The registry and draft workflow can also be called as
-Python services; only `adapter.py`, `runtime.py`, `skill_storage.py`, and
-`sandbox.py` depend on DeerFlow runtime details.
+Python services. Configuration projection, runtime admission, skill storage,
+sandbox integration, reflection, and native package validation use
+version-specific DeerFlow interfaces.
 
 ## Capabilities and ownership
 

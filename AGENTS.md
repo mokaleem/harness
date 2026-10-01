@@ -213,6 +213,10 @@ cd frontend && pnpm rstest run <pattern>     # e.g. pnpm rstest run my-component
   and the approved remote broker protocol. Do not copy the engine into this package.
 
 - Offline contribution handbook → **[docs/index.html](docs/index.html)**. Static HTML guides and shared `docs/assets/guide.css` cover internal and external contributions across skills, MCP tools, agents, and subagents, plus Python tools, extensions, runtime capabilities, and proposed enterprise additions. Distinguish contribution ownership from execution location/protocol. Keep configuration examples aligned with implementation schemas; enterprise proposals must remain labeled separately from shipped capabilities. These pages open directly in a browser without a frontend build.
+- Enterprise flows → **[docs/enterprise-flow.html](docs/enterprise-flow.html)**.
+  Edit the Mermaid sources in `docs/enterprise-flow.md`, then regenerate the six
+  SVGs with `scripts/render_enterprise_flow.mjs`. Keep diagrams aligned with code
+  and distinguish implemented controls from company-provided integrations.
 - Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**
 - Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**
 - Setup & install → **[Install.md](Install.md)**, **[CONTRIBUTING.md](CONTRIBUTING.md)**

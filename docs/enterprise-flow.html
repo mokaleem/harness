@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Detailed offline flow diagrams for registry deployment, agent execution, skill publication, dependency recovery and remote sandbox isolation.">
+  <title>Enterprise flow diagrams · DeerFlow handbook</title>
+  <link rel="icon" href="assets/guide-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/guide.css">
+  <style>
+    main { max-width: 1660px; }
+    article { max-width: none; }
+    .legend { display: flex; flex-wrap: wrap; gap: .5rem; list-style: none; padding: 0; font-size: .8125rem; }
+    .legend li { margin: 0; border: 1px solid; border-radius: .25rem; padding: .35rem .65rem; }
+    .core { background: #edf2ff; border-color: #365c99 !important; }
+    .enterprise { background: #e7f4ed; border-color: #247056 !important; }
+    .data { background: #f1eefc; border-color: #72599d !important; }
+    .gate { background: #fff4d6; border-color: #8b671a !important; }
+    .external { background: #fff1e8; border-color: #9c5b2b !important; border-style: dashed !important; }
+    .stop { background: #feece8; border-color: #9a433b !important; }
+    figure { margin: 1.25rem 0; border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; background: white; }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; background: var(--surface); border-bottom: 1px solid var(--line); font-size: .8125rem; }
+    button { font: inherit; color: var(--ink); background: white; border: 1px solid #acbfb6; border-radius: .25rem; min-height: 36px; padding: .35rem .75rem; cursor: pointer; }
+    button:hover { background: var(--accent-soft); }
+    button:focus-visible, .canvas:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+    .toolbar a { padding: .35rem .25rem; }
+    .zoom-label { min-width: 4rem; color: var(--muted); }
+    .canvas { overflow: auto; height: min(76vh, 860px); min-height: 360px; padding: 1rem; background: #fff; }
+    .canvas img { display: block; max-width: none; height: auto; width: 100%; }
+    figcaption { padding: .75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .8125rem; }
+    figure:fullscreen { border: none; display: flex; flex-direction: column; }
+    figure:fullscreen .canvas { flex: 1; height: auto; }
+    .detail { color: var(--muted); font-size: .9375rem; }
+    @media (max-width: 800px) { .canvas { height: 65vh; min-height: 320px; } .toolbar { gap: .375rem; } }
+    @media print {
+      .toolbar, .legend { display: none; }
+      section { break-before: page; }
+      #overview { break-before: auto; }
+      figure { border: none; overflow: visible; }
+      .canvas { height: auto; min-height: 0; overflow: visible; padding: 0; }
+      .canvas img { width: 100% !important; max-height: 235mm; object-fit: contain; object-position: left top; }
+      figcaption { border: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">D</span><span>DeerFlow<span class="brand-sub">Extension handbook</span></span></a>
+    <nav aria-label="Handbook navigation">
+      <div class="nav-group"><p>Start here</p><a href="index.html">Extend DeerFlow</a></div>
+      <div class="nav-group"><p>Understand the platform</p><a href="capabilities.html">Capability inventory</a><a href="capabilities-runtime.html">Runtime and embedding</a><a href="enterprise-services.html">Enterprise services</a><a href="enterprise-flow.html" aria-current="page">Enterprise flow diagrams</a></div>
+      <div class="nav-group"><p>Diagram source</p><a href="enterprise-flow.md">Editable Mermaid source</a><a href="enterprise-services.md">Setup and API contracts</a></div>
+    </nav>
+    <div class="sidebar-meta">Enterprise package 0.1.0<br>Extension API 0.2.5 · config v52<br>Offline SVG · no build required</div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="page-header"><p class="eyebrow">Architecture and execution</p><h1>Enterprise harness flow diagrams</h1><p class="lede">Follow a capability from registration to deployment, a prompt through the agent loop, and a successful investigation into a reviewed skill release.</p><div class="baseline">Implemented behavior in this checkout · company integrations explicitly marked</div></header>
+    <nav class="toc" aria-label="On this page"><span>Six connected flows</span><a href="#overview">1. Overview</a><a href="#registry">2. Registry and deployment</a><a href="#execution">3. Prompt execution</a><a href="#publication">4. Create a skill</a><a href="#recovery">5. Dependency recovery</a><a href="#sandbox">6. Remote sandbox</a><a href="#sources">Source and maintenance</a></nav>
+    <ul class="legend" aria-label="Diagram legend"><li class="core">Blue · DeerFlow core</li><li class="enterprise">Green · enterprise extension</li><li class="data">Purple cylinder · state / artifact</li><li class="gate">Gold diamond · decision</li><li class="external">Orange dashed · company integration</li><li class="stop">Red · blocked / failed path</li></ul>
+    <p class="detail">Use Fit width for the overview, then zoom to read individual steps. Each canvas scrolls independently; keyboard users can focus it and use arrow keys. Open SVG to inspect or export the full vector diagram. All assets work directly from disk.</p>
+    <noscript><p class="note">Diagrams and SVG downloads work without JavaScript. Zoom controls require JavaScript; use Open SVG and your browser's zoom controls.</p></noscript>
+    <article>
+      <section id="overview">
+        <h2>1. End-to-end overview</h2>
+        <p>The registry governs the deployed capability snapshot; DeerFlow owns planning, tool iteration, memory, and thread state. A later Create a skill action closes the loop through reviewed publication.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Overview diagram controls"><button type="button" data-action="out" aria-label="Zoom out overview">−</button><button type="button" data-action="in" aria-label="Zoom in overview">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/overview.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/overview.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable overview diagram"><img src="assets/enterprise-flow/overview.svg" alt="Operator registers capabilities, projects and deploys a team snapshot; an authenticated user enters the agent loop, discovers permitted capabilities, executes admitted operations and receives evidence. Create a skill publishes a reviewed registry revision. Typesense indexing and company services are external integrations."></div>
+          <figcaption>One team per runtime deployment. Multiple deployments can share the authoritative registry. Typesense is a derived metadata export, with a company-supplied index worker.</figcaption>
+        </figure>
+      </section>
+      <section id="registry">
+        <h2>2. Registry, activation, deployment, and rollback</h2>
+        <p>Registration checks immutable identity and content. Activation checks exact dependency pins, team scope, cycles, and name conflicts. The adapter builds native configuration; deployment applies the selected snapshot.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Registry diagram controls"><button type="button" data-action="out" aria-label="Zoom out registry diagram">−</button><button type="button" data-action="in" aria-label="Zoom in registry diagram">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/registry-deployment.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/registry-deployment.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable registry deployment diagram"><img src="assets/enterprise-flow/registry-deployment.svg" alt="Definition registration rejects changed immutable versions, activation verifies dependencies, a consistent team snapshot and operator config generate a hashed deployment bundle. Verification precedes runtime startup. Operators can redeploy earlier approved snapshots."></div>
+          <figcaption>Publication and activation are distinct from deployment. Generated skill packages are read-only, and managed custom-agent API writes are disabled.</figcaption>
+        </figure>
+      </section>
+      <section id="execution">
+        <h2>3. Prompt routing, clarification, and agent execution</h2>
+        <p>A telecom prompt is handled through bounded discovery and the existing agent loop. Registry admission occurs before the model and before tool dispatch. Discovery helps the model choose a capability; it does not grant execution permission.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Execution diagram controls"><button type="button" data-action="out" aria-label="Zoom out execution diagram">−</button><button type="button" data-action="in" aria-label="Zoom in execution diagram">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/request-execution.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/request-execution.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable request execution diagram"><img src="assets/enterprise-flow/request-execution.svg" alt="Authenticated request passes bundle, membership and custom-agent checks, loads scoped context, asks clarification if essential inputs are missing, searches skills or tools or selects a registered subagent, verifies execution admission, observes results and returns a supported answer."></div>
+          <figcaption>Template defaults: 50 prompt name previews per catalog, 5 discovery matches, 20 active deferred tool schemas. Non-interactive scheduled runs exclude clarification. Typesense is not in the implemented routing path.</figcaption>
+        </figure>
+      </section>
+      <section id="publication">
+        <h2>4. Create a skill: evidence to immutable release</h2>
+        <p>Users capture a terminal run, explicitly write a reusable parameterized recipe, validate it, and obtain an independent exact-digest review. Edits invalidate validation and review. Publication creates an immutable revision.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Skill publication diagram controls"><button type="button" data-action="out" aria-label="Zoom out skill publication diagram">−</button><button type="button" data-action="in" aria-label="Zoom in skill publication diagram">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/skill-publication.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/skill-publication.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable skill publication diagram"><img src="assets/enterprise-flow/skill-publication.svg" alt="Create a skill captures owner-visible terminal-run receipts in an expiring draft. The user parameterizes instructions, SQL, DDL, examples and pins. Structural and company semantic validation precede an independent digest-bound review. Failure returns to editing. Atomic publication stores a release, followed by separate activation and deployment."></div>
+          <figcaption>Draft lifetime defaults to 24 hours. Capture stores references and hashes, up to 1,000 events. Required domain validation blocks publication if missing. The initial recipe is a sample, not an automatic reproduction of the answer.</figcaption>
+        </figure>
+      </section>
+      <section id="recovery">
+        <h2>5. Bounded retries, circuit breakers, and partial results</h2>
+        <p>The configured async policy admits a call through shared circuit state. Only transient failures on explicitly idempotent operations can retry. Failures yield safe receipts and durable escalation events; cancellation and permanent errors propagate.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Recovery diagram controls"><button type="button" data-action="out" aria-label="Zoom out recovery diagram">−</button><button type="button" data-action="in" aria-label="Zoom in recovery diagram">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/dependency-recovery.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/dependency-recovery.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable dependency recovery diagram"><img src="assets/enterprise-flow/dependency-recovery.svg" alt="Shared circuit state blocks calls during cooldown or another active probe. One leased recovery probe or a closed circuit invokes the admitted request. Success resets the current generation. Idempotent transient failures retry within attempt and time budgets, then settle failure and escalate. Cancellation and permanent failures do not retry."></div>
+          <figcaption>At most 4 attempts; backoff capped at 10 seconds. Default policy: 1 attempt, 20-second attempt deadline, 30-second total deadline, threshold 3, cooldown 30 seconds. Escalations appear in the UI; no automatic external messages are sent.</figcaption>
+        </figure>
+      </section>
+      <section id="sandbox">
+        <h2>6. Approved remote sandbox lifecycle and enforcement</h2>
+        <p>The adapter checks the approved endpoint, owner, expiry, exact policy receipt, paths, and transfer limits. The company broker enforces OS isolation and process deadlines. Failed deletion fences the lease, including previously retained handles.</p>
+        <figure>
+          <div class="toolbar" role="group" aria-label="Sandbox diagram controls"><button type="button" data-action="out" aria-label="Zoom out sandbox diagram">−</button><button type="button" data-action="in" aria-label="Zoom in sandbox diagram">+</button><button type="button" data-action="fit">Fit width</button><button type="button" data-action="actual">100%</button><button type="button" data-action="full">Full screen</button><output class="zoom-label" aria-live="polite"></output><a href="assets/enterprise-flow/remote-sandbox.svg" target="_blank" rel="noopener">Open SVG</a><a href="assets/enterprise-flow/remote-sandbox.svg" download>Download</a></div>
+          <div class="canvas" tabindex="0" role="region" aria-label="Scrollable remote sandbox diagram"><img src="assets/enterprise-flow/remote-sandbox.svg" alt="Operator-approved HTTPS provider acquires or reuses a user-thread lease, rejects mismatched broker policy receipts, uploads bounded read-only skills, invokes path-checked operations with clipped deadlines, and receives terminal output. The remote service enforces filesystem, resource and network policy. Release fences the lease before deletion and retains the fence on failure."></div>
+          <figcaption>Default remote policy: 1 CPU, 512 MB memory/disk, 900-second lease, 60-second command deadline. Selecting this provider does not sandbox Python plugins, native tools, or stdio MCP processes in the Gateway.</figcaption>
+        </figure>
+      </section>
+      <section id="sources" class="sources">
+        <h2>Source and maintenance</h2>
+        <p>The <a href="enterprise-flow.md">Mermaid source and implementation map</a> explain each flow and link to the code. The <a href="enterprise-services.md">services guide</a> owns setup, policy defaults, and API contracts. Regenerate SVGs with <a href="../scripts/render_enterprise_flow.mjs">render_enterprise_flow.mjs</a> after editing the source.</p>
+        <p>These diagrams describe the implemented foundation. Company BQ validation, Typesense indexing, and approved remote broker enforcement require their own integrations. Qualify host-specific adapter interfaces when syncing upstream.</p>
+      </section>
+    </article>
+    <footer><p><a href="index.html">Handbook home</a> · <a href="enterprise-services.html">Enterprise services</a> · <a href="enterprise-flow.md">Editable source</a> · <a href="#main">Back to top</a></p></footer>
+  </main>
+  <script>
+    for (const figure of document.querySelectorAll('figure')) {
+      const canvas = figure.querySelector('.canvas');
+      const image = figure.querySelector('img');
+      const label = figure.querySelector('output');
+      let mode = 'fit';
+      let scale = 1;
+      const draw = () => {
+        if (!image.naturalWidth) return;
+        if (mode === 'fit') scale = Math.min(1, Math.max(0.1, (canvas.clientWidth - 32) / image.naturalWidth));
+        image.style.width = `${image.naturalWidth * scale}px`;
+        label.textContent = `${Math.round(scale * 100)}%`;
+      };
+      image.addEventListener('load', draw);
+      image.addEventListener('error', () => { label.textContent = 'Load failed'; });
+      figure.querySelector('.toolbar').addEventListener('click', async (event) => {
+        const action = event.target.closest('button')?.dataset.action;
+        if (!action) return;
+        if (action === 'full') {
+          try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else await figure.requestFullscreen();
+          } catch { label.textContent = 'Full screen unavailable'; }
+          return;
+        }
+        if (action === 'fit') mode = 'fit';
+        else {
+          mode = 'manual';
+          scale = action === 'actual' ? 1 : Math.min(3, Math.max(0.1, scale * (action === 'in' ? 1.25 : 0.8)));
+        }
+        draw();
+      });
+      new ResizeObserver(draw).observe(canvas);
+      draw();
+    }
+  </script>
+</body>
+</html>
